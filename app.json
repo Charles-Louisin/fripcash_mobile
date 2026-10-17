@@ -1,23 +1,40 @@
 {
   "expo": {
-    "name": "fripCash_mobile",
-    "slug": "fripCash_mobile",
+    "name": "FripCash",
+    "slug": "fripcash-mobile",
+    "owner": "charles-louisins-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fripcashmobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "fripcash",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FBF5F1",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "FripCash utilise l'appareil photo pour photographier tes articles et tes justificatifs.",
+        "NSPhotoLibraryUsageDescription": "FripCash accède à tes photos pour illustrer tes annonces et ton profil.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#C0603C",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "usesCleartextTraffic": true
+    },
+    "extra": {
+      "apiUrl": "",
+      "eas": {
+        "projectId": "ef74af0d-6523-475b-babd-fda1a3d988ea"
+      }
     },
     "web": {
       "output": "static",
@@ -28,9 +45,31 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#C0603C",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FripCash accède à tes photos pour illustrer tes annonces et ton profil.",
+          "cameraPermission": "FripCash utilise l'appareil photo pour photographier tes articles et tes justificatifs."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C0603C"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "FripCash utilise Face ID pour déverrouiller ton compte."
         }
       ]
     ],

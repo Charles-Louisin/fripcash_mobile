@@ -1,56 +1,51 @@
-# Welcome to your Expo app 👋
+# FripCash mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application Expo (SDK 57) pour le marketplace FripCash. Elle parle au backend Express existant (`fripcash/backend`), préfixe `/api/v1`.
 
-## Get started
+## EXPO_PUBLIC_API_URL — quel lien, où le mettre
 
-1. Install dependencies
+C’est **l’URL de l’API FripCash**, pas l’URL du tunnel Expo.
 
-   ```bash
-   npm install
-   ```
+Le tunnel (`npx expo start --tunnel`) sert uniquement le JavaScript de l’app (Metro). Le téléphone appelle ensuite le backend **directement**.
 
-2. Start the app
+| Situation | Valeur |
+| --- | --- |
+| Téléphone et PC sur le même Wi-Fi | `http://<IP-LAN-du-PC>:5000/api/v1` |
+| Backend déjà en ligne | `https://ton-domaine.com/api/v1` |
 
-   ```bash
-   npx expo start
-   ```
+Exemple Wi-Fi local : `http://192.168.1.24:5000/api/v1`
 
-In the output, you'll find options to open the app in a
+**Fichier :** `fripCash_mobile/.env` (copie `.env.example`). Ce fichier n’est pas commité.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```env
+EXPO_PUBLIC_API_URL=http://10.221.156.115:5000/api/v1
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Puis redémarre Metro : `npx expo start --tunnel --clear`. Sur le téléphone, recharge l’app (pas seulement un Fast Refresh).
 
-### Other setup steps
+Ce n’est **pas** une URL `exp.direct` / `expo.dev` / ngrok.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Démarrer avec le tunnel
 
-## Learn more
+Le backend doit écouter `0.0.0.0:5000` (déjà le cas) et le téléphone doit joindre `EXPO_PUBLIC_API_URL`.
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+cd fripCash_mobile
+npm install
+npx expo install @expo/ngrok
+npx expo start --tunnel --clear
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Ouvre le QR code dans Expo Go. Le JS arrive par le tunnel ; les appels API passent par `EXPO_PUBLIC_API_URL`.
 
-## Join the community
+## Charge (k6)
 
-Join our community of developers creating universal apps.
+Le backend plafonne `GET /listings` (défaut 40, max 80), augmente le pool Mongo, et limite le JSON à 1 Mo (16 Mo uniquement pour `/media`).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Pour un test de charge, vise `/api/v1/health` et `/api/v1/listings?limit=40`. Si le plafond te gêne :
+
+```env
+RATE_LIMIT_MAX=0
+```
+
+dans `fripcash/backend/.env` (0 = pas de plafond global ; l’auth reste limitée).
