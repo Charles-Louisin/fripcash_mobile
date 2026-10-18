@@ -66,20 +66,19 @@ export function ShopBottomNav({ active }: { active?: string }) {
     index,
     routes: items.map((item) => ({ key: item.route, name: item.route })),
   };
-  const navigation = {
-    emit: () => ({ defaultPrevented: false }),
-    navigate: (name: keyof typeof HREFS) => {
-      if (name === 'index') {
-        goToHomeRoot();
-        return;
-      }
-      router.navigate(HREFS[name] ?? '/');
-    },
+  const emitter = { emit: () => ({ defaultPrevented: false }) };
+  const navigateToTab = (routeKey: string) => {
+    if (routeKey === 'index') {
+      goToHomeRoot();
+      return;
+    }
+    router.navigate(HREFS[routeKey as keyof typeof HREFS] ?? '/');
   };
   return (
     <AppTabBar
       state={state}
-      navigation={navigation}
+      emitter={emitter}
+      navigateToTab={navigateToTab}
       items={items}
       onCenterPress={isAdmin ? undefined : () => goToSell(isConsumer, type.canPublish)}
     />
