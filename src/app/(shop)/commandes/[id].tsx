@@ -47,7 +47,7 @@ import {
 } from '@/lib/api';
 import { FULFILLMENT_LABELS, ORDER_STATUS_LABELS, orderStatusTone, shopKindLabel } from '@/lib/domain';
 import { formatGnf, formatTime, shortOrderId } from '@/lib/format';
-import { useKeyboardSpace } from '@/lib/keyboard-space';
+import { useComposerSpace } from '@/lib/keyboard-space';
 import { colors, fonts, radius } from '@/theme';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -112,7 +112,7 @@ export default function OrderChatScreen() {
   const [convId, setConvId] = useState<string | null>(null);
   const messages = useMessages(convId ?? undefined, 5_000);
   const listRef = useRef<FlatList>(null);
-  const keyboardSpace = useKeyboardSpace();
+  const composerSpace = useComposerSpace();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -233,7 +233,7 @@ export default function OrderChatScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <LazyMount kind="chat">
-      <View style={{ flex: 1, paddingBottom: keyboardSpace }}>
+      <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <IconButton icon="chevron-back" label="Retour" background={colors.white} onPress={() => router.back()} />
           <Avatar name={peer?.pseudo} size={40} />
@@ -338,7 +338,7 @@ export default function OrderChatScreen() {
           }}
         />
 
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: composerSpace }]}>
           <TextInput
             value={text}
             onChangeText={setText}

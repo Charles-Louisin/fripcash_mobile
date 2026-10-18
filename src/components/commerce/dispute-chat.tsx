@@ -36,7 +36,7 @@ import {
   type DisputeRole,
 } from '@/lib/api';
 import { formatGnf, formatTime, shortOrderId } from '@/lib/format';
-import { useKeyboardSpace } from '@/lib/keyboard-space';
+import { useComposerSpace } from '@/lib/keyboard-space';
 import { colors, fonts, radius } from '@/theme';
 
 type Attachment = { url: string; storageKey?: string; mimeType?: string; name?: string };
@@ -87,7 +87,7 @@ export function DisputeChat({ id }: { id: string }) {
   const q = useDispute(id, 5_000);
   const d = q.data;
   const listRef = useRef<FlatList>(null);
-  const keyboardSpace = useKeyboardSpace();
+  const composerSpace = useComposerSpace();
   const [text, setText] = useState('');
   const [files, setFiles] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -310,7 +310,7 @@ export function DisputeChat({ id }: { id: string }) {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <LazyMount kind="chat">
-        <View style={{ flex: 1, paddingBottom: keyboardSpace }}>
+        <View style={{ flex: 1 }}>
           <View style={styles.header}>
             <IconButton icon="chevron-back" label="Retour" background={colors.white} onPress={() => router.back()} />
             <View style={styles.headIcon}>
@@ -378,7 +378,7 @@ export function DisputeChat({ id }: { id: string }) {
                   ))}
                 </View>
               ) : null}
-              <View style={styles.composer}>
+              <View style={[styles.composer, { paddingBottom: composerSpace }]}>
                 <Pressable onPress={attach} disabled={uploading} style={styles.attach} accessibilityLabel="Joindre une image ou un PDF">
                   {uploading ? (
                     <ActivityIndicator size="small" color={colors.primary} />

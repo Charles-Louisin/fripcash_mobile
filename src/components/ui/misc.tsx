@@ -215,17 +215,39 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Stepper({ value, onChange, max = 99 }: { value: number; onChange: (n: number) => void; max?: number }) {
+export function Stepper({
+  value,
+  onChange,
+  max = 99,
+  onMax,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  max?: number;
+  onMax?: () => void;
+}) {
+  const atMin = value <= 1;
+  const atMax = value >= max;
   return (
     <View style={styles.stepper}>
-      <Pressable hitSlop={6} onPress={() => onChange(Math.max(1, value - 1))} style={styles.stepBtn} accessibilityLabel="Diminuer">
-        <Ionicons name="remove" size={16} color={colors.text} />
+      <Pressable
+        hitSlop={8}
+        onPress={() => (atMin ? undefined : onChange(value - 1))}
+        style={({ pressed }) => [styles.stepBtn, atMin && styles.stepOff, pressed && !atMin && styles.stepPressed]}
+        accessibilityLabel="Diminuer"
+        accessibilityState={{ disabled: atMin }}>
+        <Ionicons name="remove" size={18} color={atMin ? colors.textSubtle : colors.text} />
       </Pressable>
-      <Txt variant="title" style={{ minWidth: 22 }} align="center">
+      <Txt variant="title" style={{ minWidth: 24 }} align="center">
         {value}
       </Txt>
-      <Pressable hitSlop={6} onPress={() => onChange(Math.min(max, value + 1))} style={styles.stepBtn} accessibilityLabel="Augmenter">
-        <Ionicons name="add" size={16} color={colors.text} />
+      <Pressable
+        hitSlop={8}
+        onPress={() => (atMax ? onMax?.() : onChange(value + 1))}
+        style={({ pressed }) => [styles.stepBtn, atMax && styles.stepOff, pressed && !atMax && styles.stepPressed]}
+        accessibilityLabel="Augmenter"
+        accessibilityState={{ disabled: atMax }}>
+        <Ionicons name="add" size={18} color={atMax ? colors.textSubtle : colors.text} />
       </Pressable>
     </View>
   );
@@ -282,11 +304,13 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   stepBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepOff: { backgroundColor: colors.surfaceMuted },
+  stepPressed: { backgroundColor: colors.primarySoft },
 });

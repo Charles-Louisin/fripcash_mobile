@@ -90,6 +90,9 @@ export function notificationHref(
   if (disputeId) return { pathname: '/litiges/[id]', params: { id: disputeId } };
   if (orderId) return { pathname: '/commandes/[id]', params: { id: orderId } };
   if (conversationId) return { pathname: '/messages/[id]', params: { id: conversationId } };
+  if (typeof data.listingId === 'string' && data.stock) {
+    return { pathname: '/vendeur/article/[id]', params: { id: data.listingId } };
+  }
   if (typeof data.listingId === 'string') return { pathname: '/article/[id]', params: { id: data.listingId } };
   return null;
 }

@@ -107,10 +107,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
   );
   const coverH = Math.round(Math.min(340, Math.max(176, (width - 32) * 0.5)));
   const promoH = Math.round(Math.min(175, Math.max(132, width * 0.255)));
-  const tileGap = 8;
-  const tileFit = (width - 32 - tileGap * 5) / 6;
-  const tilesScroll = tileFit < 48;
-  const tileW = tilesScroll ? 72 : tileFit;
+  const flowNav = kind === "dressing" || kind === "enseigne";
   const [chip, setChip] = useState(ALL);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<CatalogFilterState>({
@@ -189,7 +186,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
     <View
       pointerEvents="box-none"
       style={[
-        kind === "dressing" ? styles.topNavFlow : styles.topNav,
+        flowNav ? styles.topNavFlow : styles.topNav,
         {
           paddingTop: insets.top + 8,
           paddingHorizontal: kind === "neuf" || kind === "quartier" ? 10 : 16,
@@ -229,7 +226,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
 
   return (
     <View style={styles.screen}>
-      {kind === "dressing" ? topNav : null}
+      {flowNav ? topNav : null}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: kind === "enseigne" ? 28 : 36 }}
@@ -240,7 +237,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
             styles.heroWrap,
             kind !== "neuf" && kind !== "quartier" && styles.heroInset,
             (kind === "neuf" || kind === "quartier") && { marginBottom: 0 },
-            kind === "dressing" && { marginTop: 8 },
+            flowNav && { marginTop: 8 },
             kind === "enseigne" && { marginBottom: 0 },
           ]}
         >
@@ -478,28 +475,18 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
           {kind === "enseigne" && chipLabels.length ? (
             <ScrollView
               horizontal
-              scrollEnabled={tilesScroll || chipLabels.length > 5}
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.tileRow,
-                !tilesScroll && chipLabels.length <= 5 && { width: "100%" },
-              ]}
+              style={styles.tileScroll}
+              contentContainerStyle={styles.tileRow}
             >
               {[ALL, ...chipLabels].map((label) => (
                 <Pressable
                   key={label}
                   onPress={() => setChip(label)}
-                  style={[
-                    styles.tile,
-                    { width: chipLabels.length > 5 ? 76 : tileW },
-                    chip === label && styles.tileOn,
-                  ]}
+                  style={[styles.tile, chip === label && styles.tileOn]}
                 >
                   <Ionicons name={categoryIcon(label)} size={22} color={colors.primary} />
-                  <Txt
-                    style={[styles.tileText, tileW < 64 && { fontSize: 10 }]}
-                    numberOfLines={1}
-                  >
+                  <Txt style={styles.tileText} numberOfLines={1}>
                     {label}
                   </Txt>
                 </Pressable>
@@ -642,7 +629,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
           </View>
         </View>
       </ScrollView>
-      {kind === "dressing" ? null : topNav}
+      {flowNav ? null : topNav}
       {kind === "enseigne" ? <ShopBottomNav /> : null}
       <FilterSheet
         visible={filtersOpen}
@@ -761,20 +748,22 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   enseigneNameWrap: { flex: 1, paddingBottom: 4 },
+  tileScroll: { marginHorizontal: -16, marginTop: 16, flexGrow: 0 },
   tileRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 8,
-    marginTop: 16,
+    gap: 10,
+    paddingHorizontal: 16,
   },
   tile: {
     height: 86,
+    minWidth: 86,
     backgroundColor: colors.surfaceMuted,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 14,
   },
   tileOn: { backgroundColor: colors.primarySoft },
   tileText: {

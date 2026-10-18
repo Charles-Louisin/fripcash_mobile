@@ -9,6 +9,7 @@ import {
   mediaUrl,
   removeCartItem,
   updateCartItem,
+  type Cart,
   type Listing,
 } from '@/lib/api';
 import { useGuestCart } from '@/stores/guest-cart';
@@ -23,6 +24,7 @@ export type CartLine = {
   imageUrl: string | null;
   quantity: number;
   maxQuantity: number;
+  soldOut: boolean;
   zoneId: string | null;
   negotiable: boolean;
   sellerId: string | null;
@@ -33,6 +35,10 @@ export type CartLine = {
   /** Prix d'une offre acceptée, appliqué à une seule unité au paiement. */
   offerPriceGnf: number | null;
 };
+
+export function isListingSoldOut(listing: Pick<Listing, 'quantity' | 'status'>) {
+  return listing.quantity <= 0 || listing.status !== 'ACTIVE';
+}
 
 export function lineTotalGnf(line: CartLine) {
   if (line.offerPriceGnf === null) return line.priceGnf * line.quantity;
@@ -81,7 +87,7 @@ export function useCart() {
     queries: listingIds.map((id) => ({
       queryKey: qk.listing(id),
       queryFn: () => fetchListing(id),
-      staleTime: 5 * 60_000,
+      staleTime: 30_000,
     })),
   });
 
@@ -98,6 +104,8 @@ export function useCart() {
       return (server.data?.items ?? []).map((item) => {
         const full = listingMap.get(item.listingId);
         const media = [...(item.listing.media ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+        const stock = full?.quantity ?? item.listing.quantity;
+        const status = full?.status ?? item.listing.status;
         return {
           key: item.id,
           listingId: item.listingId,
@@ -105,7 +113,8 @@ export function useCart() {
           priceGnf: item.listing.priceGnf,
           imageUrl: mediaUrl(media?.url) || mediaUrl(media?.storageKey) || (full ? listingImages(full)[0] : null) || null,
           quantity: item.quantity,
-          maxQuantity: item.listing.quantity || 1,
+          maxQuantity: Math.max(0, stock),
+          soldOut: stock <= 0 || status !== 'ACTIVE',
           zoneId: full?.zoneId ?? null,
           negotiable: !!full?.negotiable,
           sellerId: full?.sellerProfileId ?? null,
@@ -128,7 +137,8 @@ export function useCart() {
         priceGnf: full?.priceGnf ?? item.priceGnf,
         imageUrl: item.imageUrl || (full ? listingImages(full)[0] : null) || null,
         quantity: item.quantity,
-        maxQuantity: item.maxQuantity,
+        maxQuantity: full ? Math.max(0, full.quantity) : item.maxQuantity,
+        soldOut: full ? isListingSoldOut(full) : false,
         zoneId: full?.zoneId ?? item.zoneId,
         negotiable: !!full?.negotiable,
         sellerId: full?.sellerProfileId ?? null,
@@ -144,10 +154,11 @@ export function useCart() {
 
   const addMutation = useMutation({
     mutationFn: async ({ listing, quantity }: { listing: Listing; quantity: number }) => {
+      if (isListingSoldOut(listing)) throw new Error('Stock épuisé');
       if (isConsumer) {
         const existing = server.data?.items.find((i) => i.listingId === listing.id);
         if (existing) return;
-        await addCartItem(listing.id, Math.min(listing.quantity || 1, quantity));
+        await addCartItem(listing.id, Math.min(listing.quantity, quantity));
         return;
       }
       guest.add({
@@ -155,8 +166,8 @@ export function useCart() {
         title: listing.title,
         priceGnf: listing.priceGnf,
         imageUrl: listingImages(listing)[0] ?? null,
-        quantity,
-        maxQuantity: listing.quantity || 1,
+        quantity: Math.min(listing.quantity, quantity),
+        maxQuantity: listing.quantity,
         zoneId: listing.zoneId,
       });
     },
@@ -166,9 +177,18 @@ export function useCart() {
   const setQuantity = useCallback(
     async (line: CartLine, quantity: number) => {
       const q = Math.max(1, Math.min(line.maxQuantity, quantity));
+      if (q === line.quantity) return;
       if (isConsumer) {
-        await updateCartItem(line.key, q);
-        await invalidate();
+        const previous = client.getQueryData<Cart>(qk.cart);
+        client.setQueryData<Cart>(qk.cart, (old) =>
+          old ? { ...old, items: old.items.map((i) => (i.id === line.key ? { ...i, quantity: q } : i)) } : old,
+        );
+        try {
+          client.setQueryData(qk.cart, await updateCartItem(line.key, q));
+        } catch (e) {
+          client.setQueryData(qk.cart, previous);
+          throw e;
+        }
       } else {
         guest.setQuantity(line.listingId, q);
       }

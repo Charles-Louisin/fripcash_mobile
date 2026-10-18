@@ -8,7 +8,7 @@ import { EmptyState, ScreenHeader, toast, Txt } from '@/components/ui';
 import { CourierIntro } from '@/components/commerce/courier-intro';
 import { useAuth, useConversations, useMessages } from '@/hooks/queries';
 import { errorMessage, sendMessage } from '@/lib/api';
-import { useKeyboardSpace } from '@/lib/keyboard-space';
+import { useComposerSpace } from '@/lib/keyboard-space';
 import { formatTime } from '@/lib/format';
 import { colors, fonts, radius } from '@/theme';
 
@@ -20,7 +20,7 @@ export default function LivreurConversationScreen() {
   const peer = (convos.data ?? []).find((c) => c.id === id)?.peer;
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
-  const keyboardSpace = useKeyboardSpace();
+  const composerSpace = useComposerSpace();
 
   const send = async () => {
     if (!text.trim()) return;
@@ -35,7 +35,7 @@ export default function LivreurConversationScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <View style={{ flex: 1, paddingBottom: keyboardSpace }}>
+      <View style={{ flex: 1 }}>
         <ScreenHeader title={peer?.name || 'Discussion'} />
         <FlatList
           ref={listRef}
@@ -72,7 +72,7 @@ export default function LivreurConversationScreen() {
             );
           }}
         />
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: composerSpace }]}>
           <TextInput
             value={text}
             onChangeText={setText}

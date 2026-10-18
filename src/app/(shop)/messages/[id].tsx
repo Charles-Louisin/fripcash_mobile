@@ -8,7 +8,7 @@ import { EmptyState, ScreenHeader, toast, Txt } from '@/components/ui';
 import { CourierIntro } from '@/components/commerce/courier-intro';
 import { useAuth, useConversations, useMessages } from '@/hooks/queries';
 import { errorMessage, sendMessage } from '@/lib/api';
-import { useKeyboardSpace } from '@/lib/keyboard-space';
+import { useComposerSpace } from '@/lib/keyboard-space';
 import { formatTime } from '@/lib/format';
 import { colors, fonts, radius } from '@/theme';
 
@@ -21,7 +21,7 @@ export default function ConversationScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList>(null);
-  const keyboardSpace = useKeyboardSpace();
+  const composerSpace = useComposerSpace();
 
   const send = async () => {
     if (!text.trim()) return;
@@ -39,7 +39,7 @@ export default function ConversationScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <View style={{ flex: 1, paddingBottom: keyboardSpace }}>
+      <View style={{ flex: 1 }}>
         <ScreenHeader title={peer?.name || 'Discussion'} />
         <FlatList
           ref={listRef}
@@ -76,7 +76,7 @@ export default function ConversationScreen() {
             );
           }}
         />
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: composerSpace }]}>
           <TextInput
             value={text}
             onChangeText={setText}

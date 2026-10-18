@@ -26,8 +26,19 @@ function CartLines({ onCheckout }: { onCheckout?: () => void }) {
   const goods = cart.subtotal - bundle;
   const total = goods + shipping;
 
+  const soldOutLines = cart.lines.filter((line) => line.soldOut);
+  const overStock = cart.lines.find((line) => !line.soldOut && line.quantity > line.maxQuantity);
+
   const checkout = () => {
     if (!cart.lines.length) return;
+    if (soldOutLines.length) {
+      toast.error(`Stock épuisé : retire « ${soldOutLines[0].title} » du panier pour continuer.`);
+      return;
+    }
+    if (overStock) {
+      toast.error(`Il ne reste que ${overStock.maxQuantity} « ${overStock.title} » en stock.`);
+      return;
+    }
     onCheckout?.();
     if (!isConsumer) {
       toast.info('Connecte-toi pour passer commande.');
@@ -60,7 +71,13 @@ function CartLines({ onCheckout }: { onCheckout?: () => void }) {
         <TotalRow label="Frais de livraison (estimés)" value={zoneId ? formatGnf(shipping) : '—'} />
         <TotalRow label="Total" value={formatGnf(zoneId ? total : goods)} strong />
       </View>
-      <Button title="Passer la commande" iconRight="chevron-forward" onPress={checkout} full />
+      <Button
+        title="Passer la commande"
+        iconRight="chevron-forward"
+        onPress={checkout}
+        variant={soldOutLines.length || overStock ? 'muted' : 'primary'}
+        full
+      />
     </View>
   );
 }
@@ -68,8 +85,9 @@ function CartLines({ onCheckout }: { onCheckout?: () => void }) {
 function CartLineCard({ line }: { line: CartLine }) {
   const cart = useCart();
   const note = line.conditionNote?.trim();
+  const lowStock = !line.soldOut && line.maxQuantity > 0 && line.maxQuantity <= 3;
   return (
-    <View style={styles.line}>
+    <View style={[styles.line, line.soldOut && styles.lineSoldOut]}>
       <Pressable onPress={() => router.push({ pathname: '/article/[id]', params: { id: line.listingId } })}>
         {line.imageUrl ? (
           <Image source={{ uri: line.imageUrl }} style={styles.thumb} contentFit="cover" />
@@ -94,12 +112,28 @@ function CartLineCard({ line }: { line: CartLine }) {
             {note}
           </Txt>
         ) : null}
+        {line.soldOut ? (
+          <Txt style={styles.stockOut}>Stock épuisé : retire cet article</Txt>
+        ) : lowStock ? (
+          <Txt style={styles.stockLow}>
+            Plus que {line.maxQuantity} en stock
+          </Txt>
+        ) : null}
         <View style={styles.lineBottom}>
-          <Stepper
-            value={line.quantity}
-            max={line.maxQuantity}
-            onChange={(n) => cart.setQuantity(line, n).catch((e) => toast.error(errorMessage(e)))}
-          />
+          {line.soldOut ? (
+            <View />
+          ) : (
+            <Stepper
+              value={line.quantity}
+              max={Math.max(1, line.maxQuantity)}
+              onMax={() =>
+                toast.info(
+                  `Stock maximum atteint : ${line.maxQuantity} disponible${line.maxQuantity > 1 ? 's' : ''}.`,
+                )
+              }
+              onChange={(n) => cart.setQuantity(line, n).catch((e) => toast.error(errorMessage(e)))}
+            />
+          )}
           <View style={{ alignItems: 'flex-end' }}>
             <Txt style={styles.linePrice}>{formatGnf(lineTotalGnf(line))}</Txt>
             <Txt variant="small" color={line.offerPriceGnf !== null ? colors.success : undefined}>
@@ -150,6 +184,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
+  lineSoldOut: { borderColor: colors.error, opacity: 0.85 },
+  stockOut: { fontFamily: fonts.bold, fontSize: 12, color: colors.error },
+  stockLow: { fontFamily: fonts.semibold, fontSize: 12, color: colors.warning },
   thumb: { width: 72, height: 84, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
   lineTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   lineTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.text },

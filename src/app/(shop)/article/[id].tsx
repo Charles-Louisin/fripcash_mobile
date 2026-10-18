@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -154,11 +154,26 @@ export default function ArticleScreen() {
   });
   const similar = useListings({ categoryId: listing?.categoryId || undefined, limit: 8 }, !!listing?.categoryId);
 
+  const { refetch: refetchListing } = listingQ;
+  useFocusEffect(
+    useCallback(() => {
+      refetchListing();
+    }, [refetchListing]),
+  );
+
   const images = listing ? listingImages(listing) : [];
   const soldOut = !listing || listing.quantity <= 0 || listing.status === 'SOLD' || listing.status === 'SOLD_OUT';
 
   const addToCart = async () => {
     if (!listing) return;
+    if (soldOut) {
+      toast.error('Stock épuisé');
+      return;
+    }
+    if (cart.lines.some((line) => line.listingId === listing.id)) {
+      setCartOpen(true);
+      return;
+    }
     try {
       await cart.add({ listing, quantity: 1 });
       setCartOpen(true);
@@ -274,7 +289,14 @@ export default function ArticleScreen() {
                 <Button title="Faire une offre" variant="outline" size="lg" onPress={() => requireAuth(() => setOfferOpen(true))} style={{ flex: 1 }} />
               ) : null}
               {showCart ? (
-                <Button title="Acheter" size="lg" onPress={addToCart} disabled={soldOut} loading={cart.adding} style={{ flex: 1 }} />
+                <Button
+                  title="Acheter"
+                  size="lg"
+                  variant={soldOut ? 'muted' : 'primary'}
+                  onPress={addToCart}
+                  loading={cart.adding}
+                  style={{ flex: 1 }}
+                />
               ) : null}
             </View>
           </StickyFooter>

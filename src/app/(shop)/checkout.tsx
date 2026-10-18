@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -53,6 +54,7 @@ export default function CheckoutScreen() {
   const { isConsumer } = useAuth();
   const { data: me } = useMe();
   const cart = useCart();
+  const client = useQueryClient();
   const tariffs = useTariffs();
   const [zoneId, setZoneId] = useState(me?.shippingZoneId ?? '');
   const [name, setName] = useState(personName(me?.displayName));
@@ -95,6 +97,11 @@ export default function CheckoutScreen() {
       toast.error(`${onVacation.sellerName || 'Ce vendeur'} est en vacances : retire ses articles du panier pour continuer.`);
       return;
     }
+    const soldOut = cart.lines.find((l) => l.soldOut);
+    if (soldOut) {
+      toast.error(`Stock épuisé : retire « ${soldOut.title} » du panier pour continuer.`);
+      return;
+    }
     const next: FieldErrors = {};
     if (!name.trim()) next.name = 'Indique le nom complet du destinataire.';
     if (!address.trim()) next.address = 'Indique l’adresse de livraison (quartier, repère).';
@@ -129,6 +136,9 @@ export default function CheckoutScreen() {
         toZoneId: zoneId,
         offerAmountGnf: withOffer ? offerAmount : undefined,
       });
+      for (const key of ['listing', 'listings', 'seller']) {
+        client.invalidateQueries({ queryKey: [key] });
+      }
       if (res.payment.mustRedirect && res.payment.paymentUrl) {
         await WebBrowser.openBrowserAsync(res.payment.paymentUrl);
       }

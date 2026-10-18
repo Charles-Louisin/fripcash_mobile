@@ -6,7 +6,7 @@ import { colors, fonts, radius } from '@/theme';
 
 import { Txt } from './text';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'dark' | 'light';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'dark' | 'light' | 'muted';
 
 export type ButtonProps = {
   title: string;
@@ -30,6 +30,7 @@ const PALETTE: Record<Variant, { bg: string; fg: string; border?: string }> = {
   danger: { bg: colors.errorSoft, fg: colors.error },
   dark: { bg: colors.dark, fg: colors.onDark },
   light: { bg: colors.white, fg: colors.text, border: colors.border },
+  muted: { bg: colors.border, fg: colors.textMuted },
 };
 
 const SIZES = {

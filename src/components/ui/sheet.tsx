@@ -85,37 +85,39 @@ export function Sheet({
           <Animated.View style={[styles.backdrop, backdropStyle]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Fermer" />
           </Animated.View>
-          <GestureDetector gesture={pan}>
-            <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + 16 + keyboardSpace }, sheetStyle]}>
-              <View style={styles.handleZone}>
-                <View style={styles.handle} />
-              </View>
-              {title || showClose || icon ? (
-                <View style={styles.head}>
-                  {icon ? <Ionicons name={icon} size={20} color={colors.text} /> : null}
-                  {title ? (
-                    <Txt variant="h2" style={{ flex: 1 }} numberOfLines={1}>
-                      {title}
-                    </Txt>
-                  ) : (
-                    <View style={{ flex: 1 }} />
-                  )}
-                  {showClose ? (
-                    <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Fermer">
-                      <Ionicons name="close" size={22} color={colors.text} />
-                    </Pressable>
-                  ) : null}
+          <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + 16 + keyboardSpace }, sheetStyle]}>
+            <GestureDetector gesture={pan}>
+              <View>
+                <View style={styles.handleZone}>
+                  <View style={styles.handle} />
                 </View>
-              ) : null}
-              <ScrollView
-                keyboardShouldPersistTaps="always"
-                keyboardDismissMode="none"
-                bounces={false}
-                style={{ maxHeight: 560 }}>
-                {children}
-              </ScrollView>
-            </Animated.View>
-          </GestureDetector>
+                {title || showClose || icon ? (
+                  <View style={styles.head}>
+                    {icon ? <Ionicons name={icon} size={20} color={colors.text} /> : null}
+                    {title ? (
+                      <Txt variant="h2" style={{ flex: 1 }} numberOfLines={1}>
+                        {title}
+                      </Txt>
+                    ) : (
+                      <View style={{ flex: 1 }} />
+                    )}
+                    {showClose ? (
+                      <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Fermer">
+                        <Ionicons name="close" size={22} color={colors.text} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            </GestureDetector>
+            <ScrollView
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
+              bounces={false}
+              style={{ maxHeight: 560 }}>
+              {children}
+            </ScrollView>
+          </Animated.View>
         </View>
       </GestureHandlerRootView>
     </Modal>
