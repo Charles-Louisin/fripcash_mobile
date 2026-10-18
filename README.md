@@ -49,3 +49,8 @@ RATE_LIMIT_MAX=0
 ```
 
 dans `fripcash/backend/.env` (0 = pas de plafond global ; l’auth reste limitée).
+
+
+"runtimeVersion": {
+      "policy": "appVersion"
+    }
