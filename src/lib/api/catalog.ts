@@ -54,6 +54,7 @@ export type ListingInput = {
   negotiable?: boolean;
   discountEnabled?: boolean;
   compareAtPriceGnf?: number | null;
+  pickupEnabled?: boolean;
 };
 
 export const createListing = (body: ListingInput) => api.post<Listing>('/listings', body);

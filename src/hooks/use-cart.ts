@@ -31,6 +31,9 @@ export type CartLine = {
   sellerName: string | null;
   conditionNote: string | null;
   sellerOnVacation: boolean;
+  destination?: Listing['destination'];
+  pickupEnabled?: boolean;
+  shopKind?: string | null;
   bundle: { minItems: number; percent: number } | null;
   /** Prix d'une offre acceptée, appliqué à une seule unité au paiement. */
   offerPriceGnf: number | null;
@@ -54,19 +57,38 @@ function sellerExtras(full: Listing | undefined) {
   };
 }
 
-/** Remise « lot » par vendeur, calculée comme au paiement côté serveur. */
-export function bundleDiscountGnf(lines: CartLine[]) {
+export type CartSellerGroup = {
+  key: string;
+  lines: CartLine[];
+  zoneId: string | null;
+  proximite: boolean;
+  handPickupReady: boolean;
+};
+
+/** Un pack par vendeur : chaque groupe devient une commande séparée au paiement. */
+export function cartSellerGroups(lines: CartLine[]): CartSellerGroup[] {
   const bySeller = new Map<string, CartLine[]>();
   for (const line of lines) {
     const key = line.sellerId ?? line.key;
     bySeller.set(key, [...(bySeller.get(key) ?? []), line]);
   }
+  return [...bySeller.entries()].map(([key, group]) => ({
+    key,
+    lines: group,
+    zoneId: group.find((line) => line.zoneId)?.zoneId ?? null,
+    proximite: group.every((line) => line.shopKind === 'proximite'),
+    handPickupReady: group.every((line) => line.destination === 'SECONDE_MAIN' && !!line.pickupEnabled),
+  }));
+}
+
+/** Remise « lot » par vendeur, calculée comme au paiement côté serveur. */
+export function bundleDiscountGnf(lines: CartLine[]) {
   let discount = 0;
-  for (const group of bySeller.values()) {
-    const bundle = group[0].bundle;
-    const count = group.reduce((n, l) => n + l.quantity, 0);
-    if (!bundle || count < bundle.minItems || group.some((l) => l.offerPriceGnf !== null)) continue;
-    const goods = group.reduce((s, l) => s + l.priceGnf * l.quantity, 0);
+  for (const group of cartSellerGroups(lines)) {
+    const bundle = group.lines[0].bundle;
+    const count = group.lines.reduce((n, l) => n + l.quantity, 0);
+    if (!bundle || count < bundle.minItems || group.lines.some((l) => l.offerPriceGnf !== null)) continue;
+    const goods = group.lines.reduce((s, l) => s + l.priceGnf * l.quantity, 0);
     discount += goods - Math.round(goods * (1 - bundle.percent / 100));
   }
   return discount;
@@ -120,6 +142,9 @@ export function useCart() {
           sellerId: full?.sellerProfileId ?? null,
           sellerName: full?.sellerProfile?.shopName || full?.sellerProfile?.displayName || null,
           conditionNote: full?.conditionNote ?? null,
+          destination: full?.destination,
+          pickupEnabled: !!full?.pickupEnabled,
+          shopKind: full?.sellerProfile?.shopKind ?? null,
           ...sellerExtras(full),
           offerPriceGnf:
             item.acceptedOffer && item.acceptedOffer.amountGnf < item.listing.priceGnf
@@ -144,6 +169,9 @@ export function useCart() {
         sellerId: full?.sellerProfileId ?? null,
         sellerName: full?.sellerProfile?.shopName || full?.sellerProfile?.displayName || null,
         conditionNote: full?.conditionNote ?? null,
+        destination: full?.destination,
+        pickupEnabled: !!full?.pickupEnabled,
+        shopKind: full?.sellerProfile?.shopKind ?? null,
         ...sellerExtras(full),
         offerPriceGnf: null,
       };

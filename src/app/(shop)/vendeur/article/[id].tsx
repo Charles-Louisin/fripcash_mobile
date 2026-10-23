@@ -1,12 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, Switch, View } from 'react-native';
 
-import { SelectField } from '@/components/select-field';
 import { Button, ConfirmDialog, Input, Loading, Screen, ScreenHeader, toast, Txt } from '@/components/ui';
-import { qk, useCategories, useListing } from '@/hooks/queries';
+import { qk, useListing } from '@/hooks/queries';
 import { useAccountType } from '@/hooks/use-account-type';
 import {
   attachListingMedia,
@@ -56,7 +55,6 @@ export default function EditArticleScreen() {
 }
 
 function ArticleForm({ id, isNew, initial }: { id: string; isNew: boolean; initial?: Listing }) {
-  const cats = useCategories();
   const { type, me } = useAccountType();
   const client = useQueryClient();
   const destination = (
@@ -68,8 +66,8 @@ function ArticleForm({ id, isNew, initial }: { id: string; isNew: boolean; initi
   const [description, setDescription] = useState(initial?.description ?? '');
   const [price, setPrice] = useState(initial ? String(initial.netPriceGnf || initial.priceGnf) : '');
   const [qty, setQty] = useState(initial ? String(initial.quantity) : '1');
-  const [picked, setPicked] = useState<{ parent: string; sub: string } | null>(null);
   const [condition, setCondition] = useState(initial?.conditionNote ?? '');
+  const [pickupEnabled, setPickupEnabled] = useState(!!initial?.pickupEnabled);
   const [negotiable, setNegotiable] = useState(!!initial?.negotiable);
   const [promo, setPromo] = useState(!!initial?.discountEnabled);
   const [compare, setCompare] = useState(initial?.compareAtPriceGnf ? String(initial.compareAtPriceGnf) : '');
@@ -78,19 +76,7 @@ function ArticleForm({ id, isNew, initial }: { id: string; isNew: boolean; initi
   const [replacing, setReplacing] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const allCats = cats.data ?? [];
-  const selection = useMemo(() => {
-    if (picked) return picked;
-    const current = initial?.categoryId;
-    const cat = allCats.find((c) => c.id === current);
-    if (!cat) return { parent: '', sub: '' };
-    if (cat.parentId) return { parent: cat.parentId, sub: cat.id };
-    return { parent: cat.id, sub: '' };
-  }, [picked, allCats, initial?.categoryId]);
-  const parentId = selection.parent;
-  const subId = selection.sub;
-  const parents = allCats.filter((c) => !c.parentId);
-  const children = allCats.filter((c) => c.parentId === parentId);
+  const isSecondHand = destination === 'SECONDE_MAIN';
 
   const attach = async (photo: Photo): Promise<Photo> => {
     if (isNew) return photo;
@@ -174,11 +160,11 @@ function ArticleForm({ id, isNew, initial }: { id: string; isNew: boolean; initi
       netPriceGnf: net,
       quantity,
       destination,
-      categoryId: (subId || parentId) || undefined,
       conditionNote: condition || undefined,
       negotiable,
       discountEnabled: promo,
       compareAtPriceGnf: promo ? Number(compare.replace(/\s/g, '')) || null : null,
+      pickupEnabled: isSecondHand ? pickupEnabled : undefined,
     };
     setLoading(true);
     try {
@@ -269,23 +255,17 @@ function ArticleForm({ id, isNew, initial }: { id: string; isNew: boolean; initi
         <Input label="Titre" value={title} onChangeText={setTitle} />
         <Input label="Description" value={description} onChangeText={setDescription} multiline />
         <Input label="Prix net (GNF)" value={price} onChangeText={setPrice} keyboardType="numeric" />
-        <Input label="Quantité" value={qty} onChangeText={setQty} keyboardType="numeric" />
-        <SelectField
-          label="Catégorie"
-          value={parentId}
-          onChange={(id) => setPicked({ parent: id, sub: '' })}
-          options={parents.map((c) => ({ value: c.id, label: c.nameFr }))}
-        />
-        {parentId && children.length ? (
-          <SelectField
-            label="Sous-catégorie"
-            value={subId}
-            placeholder="Choisir une sous-catégorie"
-            onChange={(id) => setPicked({ parent: parentId, sub: id })}
-            options={children.map((c) => ({ value: c.id, label: c.nameFr }))}
-          />
-        ) : null}
+        <Input label="Quantité (Stock)" value={qty} onChangeText={setQty} keyboardType="numeric" />
         <Input label="État / note" value={condition} onChangeText={setCondition} />
+        {isSecondHand ? (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Txt variant="label">Retrait en main propre</Txt>
+              <Txt variant="caption">Le client récupère chez toi avec un code, sans livreur.</Txt>
+            </View>
+            <Switch value={pickupEnabled} onValueChange={setPickupEnabled} trackColor={{ true: colors.primary }} />
+          </View>
+        ) : null}
         <View style={{ gap: 22, marginTop: 14, marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 }}>
             <Txt variant="label">Négociable</Txt>

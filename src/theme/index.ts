@@ -1,5 +1,11 @@
 import { Platform } from 'react-native';
 
+export {
+  fonts,
+  systemFonts,
+  type FontTokens,
+} from '@/theme/fonts';
+
 export const colors = {
   primary: '#BC5C40',
   primaryDark: '#A94E35',
@@ -29,16 +35,6 @@ export const colors = {
   onDarkMuted: '#C9B5AB',
   overlay: 'rgba(46, 33, 28, 0.55)',
   white: '#FFFFFF',
-};
-
-export const fonts = {
-  light: 'PlusJakartaSans_300Light',
-  regular: 'PlusJakartaSans_400Regular',
-  medium: 'PlusJakartaSans_500Medium',
-  semibold: 'PlusJakartaSans_600SemiBold',
-  bold: 'PlusJakartaSans_700Bold',
-  display: 'PlayfairDisplay_600SemiBold',
-  displayBold: 'PlayfairDisplay_700Bold',
 };
 
 export const radius = {

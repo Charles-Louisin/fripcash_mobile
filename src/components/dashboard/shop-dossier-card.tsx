@@ -111,6 +111,13 @@ export function ShopDossierCard() {
       ) : (
         <Txt variant="caption">Aucun document joint.</Txt>
       )}
+      <Txt variant="caption" color={colors.textMuted}>
+        {type.id === 'commerceLocal'
+          ? 'Documents attendus : CNI.'
+          : type.id === 'grandeSurface'
+            ? 'Documents attendus : registre de commerce ou équivalent.'
+            : 'Justificatifs demandés par l’équipe.'}
+      </Txt>
       {canAdd ? (
         <Button title={busy ? 'Envoi…' : 'Ajouter un justificatif'} onPress={add} loading={busy} variant="secondary" />
       ) : (

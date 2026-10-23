@@ -27,7 +27,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.anonymous.fripcashmobile"
     },
     "extra": {
       "apiUrl": "",
@@ -75,7 +76,7 @@
     "updates": {
       "url": "https://u.expo.dev/ef74af0d-6523-475b-babd-fda1a3d988ea"
     },
-    "runtimeVersion": "58.0.0",
+    "runtimeVersion": "57.0.0",
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

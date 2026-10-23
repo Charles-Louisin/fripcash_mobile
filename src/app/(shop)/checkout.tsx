@@ -20,12 +20,12 @@ import {
   Txt,
 } from '@/components/ui';
 import { useAuth, useMe, useTariffs, useZones } from '@/hooks/queries';
-import { bundleDiscountGnf, lineTotalGnf, useCart } from '@/hooks/use-cart';
+import { bundleDiscountGnf, cartSellerGroups, lineTotalGnf, useCart } from '@/hooks/use-cart';
 import { checkout, errorMessage, type PaymentMethod } from '@/lib/api';
 import { PAYMENT_METHOD_LABELS } from '@/lib/domain';
 import { formatGnf } from '@/lib/format';
 import { isValidEmail, parseGnMobile, toE164 } from '@/lib/gn-phone';
-import { cartShippingGnf } from '@/lib/shipping';
+import { tariffAmountGnf } from '@/lib/shipping';
 import { colors, radius } from '@/theme';
 
 type FieldErrors = {
@@ -74,11 +74,28 @@ export default function CheckoutScreen() {
     setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
   };
 
-  const shipping = useMemo(
-    () => cartShippingGnf(tariffs.data ?? [], zoneId, cart.lines.map((l) => l.zoneId)),
-    [tariffs.data, zoneId, cart.lines]
+  const sellerGroups = useMemo(() => cartSellerGroups(cart.lines), [cart.lines]);
+  const quartierPickup = sellerGroups.length > 0 && sellerGroups.every((g) => g.proximite);
+  const handPickupEligible = sellerGroups.length > 0 && sellerGroups.every((g) => g.handPickupReady);
+  const [handPickup, setHandPickup] = useState(false);
+  const delivery = useMemo(
+    () =>
+      sellerGroups.map((group) => {
+        const pickup = group.proximite || (handPickupEligible && group.handPickupReady && handPickup);
+        return {
+          ...group,
+          name: group.lines[0]?.sellerName || 'Vendeur',
+          pickup,
+          shippingGnf: pickup ? 0 : tariffAmountGnf(tariffs.data ?? [], group.zoneId, zoneId),
+        };
+      }),
+    [sellerGroups, handPickup, handPickupEligible, tariffs.data, zoneId],
   );
-  const sellerCount = new Set(cart.lines.map((l) => l.sellerId ?? l.key)).size;
+  const allPickup = delivery.length > 0 && delivery.every((d) => d.pickup);
+  const codePickup = allPickup;
+  const hasPickup = delivery.some((d) => d.pickup);
+  const shipping = delivery.reduce((sum, d) => sum + d.shippingGnf, 0);
+  const sellerCount = sellerGroups.length;
   const acceptedOffers = cart.lines.filter((l) => l.offerPriceGnf !== null);
   const canOffer = cart.lines.some((l) => l.negotiable) && sellerCount === 1 && !acceptedOffers.length;
   const offerAmount = Number(offer.replace(/\s/g, ''));
@@ -104,8 +121,10 @@ export default function CheckoutScreen() {
     }
     const next: FieldErrors = {};
     if (!name.trim()) next.name = 'Indique le nom complet du destinataire.';
-    if (!address.trim()) next.address = 'Indique l’adresse de livraison (quartier, repère).';
-    if (!zoneId) next.zone = 'Choisis la zone de livraison. La ville en dépend.';
+    if (!codePickup) {
+      if (!address.trim()) next.address = 'Indique l’adresse de livraison (quartier, repère).';
+      if (!zoneId) next.zone = 'Choisis la zone de livraison. La ville en dépend.';
+    }
     const e164 = toE164(phone);
     if (!phone.trim()) next.phone = 'Indique un numéro de téléphone.';
     else if (!e164) next.phone = 'Ce numéro n’est pas valide. Utilise un numéro guinéen, par exemple 622 00 00 00.';
@@ -125,15 +144,16 @@ export default function CheckoutScreen() {
     try {
       const res = await checkout({
         paymentMethod: method,
-        address: address.trim(),
-        city: zoneName || undefined,
+        address: codePickup ? address.trim() || 'Retrait sur place' : address.trim(),
+        city: codePickup ? undefined : zoneName || undefined,
         phone: e164!,
         name: name.trim(),
         email: email.trim() || `${e164!.replace('+', '')}@fripcash.gn`,
         mobileNumber: payPhone ?? undefined,
-        fulfillmentMode: 'courier',
-        shippingCostGnf: shipping,
-        toZoneId: zoneId,
+        // Sans mode global, le serveur applique le mode propre à chaque vendeur
+        // (retrait pour une boutique de quartier, livraison sinon).
+        fulfillmentMode: handPickup && handPickupEligible ? 'pickup' : undefined,
+        toZoneId: codePickup ? undefined : zoneId,
         offerAmountGnf: withOffer ? offerAmount : undefined,
       });
       for (const key of ['listing', 'listings', 'seller']) {
@@ -224,20 +244,81 @@ export default function CheckoutScreen() {
       ) : null}
 
       <View style={{ gap: 12, marginBottom: 18 }}>
-        <Txt variant="h3">Livraison</Txt>
+        <Txt variant="h3">{allPickup ? 'Retrait' : hasPickup ? 'Livraison et retrait' : 'Livraison'}</Txt>
+        {quartierPickup ? (
+          <Card style={{ backgroundColor: '#E4F3EC', gap: 6 }}>
+            <Txt variant="bodyStrong" color="#1F5C45">
+              Retrait par code
+            </Txt>
+            <Txt variant="caption" color="#2A6B52">
+              Après paiement, un code à 6 chiffres te sera envoyé. Présente-le au boutiquier pour récupérer ta commande.
+            </Txt>
+          </Card>
+        ) : null}
+        {handPickupEligible ? (
+          <View style={{ gap: 8 }}>
+            <Pressable
+              onPress={() => setHandPickup(false)}
+              style={[styles.method, !handPickup && styles.methodOn]}>
+              <Txt variant="bodyStrong">Livraison par livreur</Txt>
+              <Txt variant="caption">Adresse et zone requises.</Txt>
+            </Pressable>
+            <Pressable
+              onPress={() => setHandPickup(true)}
+              style={[styles.method, handPickup && styles.methodOn]}>
+              <Txt variant="bodyStrong">Retrait en main propre</Txt>
+              <Txt variant="caption">Récupère chez le vendeur avec un code — pas de livreur.</Txt>
+            </Pressable>
+          </View>
+        ) : null}
+        {sellerGroups.length > 1 ? (
+          <Card style={{ backgroundColor: colors.surfaceMuted, gap: 10 }}>
+            <Txt variant="bodyStrong">Livraison par vendeur</Txt>
+            {delivery.map((d) => (
+              <View key={d.key} style={styles.sellerRow}>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="bodyStrong" numberOfLines={1}>
+                    {d.name}
+                  </Txt>
+                  <Txt variant="caption">
+                    {d.proximite
+                      ? 'Retrait par code en boutique'
+                      : d.pickup
+                        ? 'Retrait en main propre'
+                        : zoneId
+                          ? 'Livraison par livreur'
+                          : 'Zone de livraison à choisir'}
+                  </Txt>
+                </View>
+                <Txt variant="bodyStrong">
+                  {d.pickup ? 'Gratuit' : zoneId ? formatGnf(d.shippingGnf) : '—'}
+                </Txt>
+              </View>
+            ))}
+            <Txt variant="caption">
+              Chaque vendeur prépare et expédie son propre pack : les frais partent de sa zone.
+            </Txt>
+          </Card>
+        ) : null}
         <Input label="Nom" value={name} onChangeText={(v) => { setName(v); clearError('name'); }} error={errors.name} />
         <Input label="Téléphone" value={phone} onChangeText={(v) => { setPhone(v); clearError('phone'); }} keyboardType="phone-pad" prefix="+224" error={errors.phone} />
         <Input label="E-mail" value={email} onChangeText={(v) => { setEmail(v); clearError('email'); }} keyboardType="email-address" autoCapitalize="none" error={errors.email} />
-        <Input label="Adresse" value={address} onChangeText={(v) => { setAddress(v); clearError('address'); }} placeholder="Quartier, repère…" error={errors.address} />
-        <ZoneSelect
-          label="Zone de livraison"
-          value={zoneId}
-          error={errors.zone}
-          onChange={(id) => {
-            setZoneId(id);
-            clearError('zone');
-          }}
-        />
+        {!codePickup ? (
+          <>
+            <Input label="Adresse" value={address} onChangeText={(v) => { setAddress(v); clearError('address'); }} placeholder="Quartier, repère…" error={errors.address} />
+            <ZoneSelect
+              label="Zone de livraison"
+              value={zoneId}
+              error={errors.zone}
+              onChange={(id) => {
+                setZoneId(id);
+                clearError('zone');
+              }}
+            />
+          </>
+        ) : handPickup ? (
+          <Txt variant="caption">Le vendeur te contactera pour le lieu de retrait via la messagerie.</Txt>
+        ) : null}
         {canOffer ? (
           <Input
             label="Offre globale (optionnel)"
@@ -351,10 +432,17 @@ export default function CheckoutScreen() {
               </Txt>
             </View>
           ) : null}
-          <View style={styles.line}>
-            <Txt variant="caption">Livraison{zoneName ? ` · ${zoneName}` : ''}</Txt>
-            <Txt variant="bodyStrong">{zoneId ? formatGnf(shipping) : '—'}</Txt>
-          </View>
+          {delivery.map((d) => (
+            <View key={`ship-${d.key}`} style={styles.line}>
+              <Txt variant="caption" style={{ flex: 1, paddingRight: 12 }} numberOfLines={1}>
+                {d.pickup ? 'Retrait' : 'Livraison'} · {d.name}
+                {!d.pickup && zoneName ? ` · ${zoneName}` : ''}
+              </Txt>
+              <Txt variant="bodyStrong">
+                {d.pickup ? 'Gratuit' : zoneId ? formatGnf(d.shippingGnf) : '—'}
+              </Txt>
+            </View>
+          ))}
           <View style={styles.line}>
             <Txt variant="bodyStrong">Total</Txt>
             <Txt variant="h3" weight="bold">
@@ -372,6 +460,7 @@ const styles = StyleSheet.create({
   payBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   payTotal: { flex: 1, gap: 2, paddingVertical: 4 },
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   item: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   thumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },

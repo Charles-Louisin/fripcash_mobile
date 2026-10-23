@@ -42,6 +42,7 @@ import {
   sellerRefund,
   sendMessage,
   transitionOrder,
+  verifyOrderPickupCode,
   type Order,
   type OrderStatus,
 } from '@/lib/api';
@@ -76,7 +77,9 @@ function eventCopy(status: string, order: Order) {
     case 'PREPARING':
       return { title: 'En préparation', text: 'Le vendeur prépare le colis.' };
     case 'READY_FOR_PICKUP':
-      return { title: 'Prête à récupérer', text: 'Un livreur peut prendre en charge le colis.' };
+      return order.fulfillmentMode === 'pickup'
+        ? { title: 'Prête au retrait', text: 'Présente ton code au vendeur pour récupérer la commande.' }
+        : { title: 'Prête à récupérer', text: 'Un livreur peut prendre en charge le colis.' };
     case 'COURIER_ASSIGNED':
       return { title: `Course acceptée — ${name}`, text: `${name} va récupérer le colis.` };
     case 'BUYER_CONFIRMED':
@@ -248,7 +251,12 @@ export default function OrderChatScreen() {
           </View>
         </View>
 
-        <View style={styles.pin}>
+        <Pressable
+          style={styles.pin}
+          disabled={!first?.listingId}
+          onPress={() => {
+            if (first?.listingId) router.push({ pathname: '/article/[id]', params: { id: first.listingId } });
+          }}>
           {first?.imageUrl ? <Image source={{ uri: first.imageUrl }} style={styles.pinImg} contentFit="cover" /> : <View style={styles.pinImg} />}
           <View style={{ flex: 1 }}>
             <Txt variant="bodyStrong" numberOfLines={1}>
@@ -260,7 +268,8 @@ export default function OrderChatScreen() {
               tone={order.escrowStatus === 'blocked' ? 'warning' : orderStatusTone(order.status)}
             />
           </View>
-        </View>
+          {first?.listingId ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
+        </Pressable>
 
         <FlatList
           ref={listRef}
@@ -332,6 +341,9 @@ export default function OrderChatScreen() {
                 dispute={dispute ? { status: dispute.status } : null}
                 onOpenDispute={() =>
                   dispute && router.push({ pathname: '/litiges/[id]', params: { id: dispute.id } })
+                }
+                onVerifyPickup={(code) =>
+                  run(() => verifyOrderPickupCode(order.id, code), 'Code validé — tu peux remettre le colis')
                 }
               />
             );
@@ -446,6 +458,7 @@ function ActionCards({
   onPayFull,
   onCancel,
   onRefund,
+  onVerifyPickup,
   dispute,
   onOpenDispute,
 }: {
@@ -465,8 +478,11 @@ function ActionCards({
   onPayFull: () => void;
   onCancel: () => void;
   onRefund: () => void;
+  onVerifyPickup: (code: string) => void;
 }) {
   const cards: React.ReactNode[] = [];
+  const isPickup = order.fulfillmentMode === 'pickup';
+  const [sellerCode, setSellerCode] = useState('');
 
   if (dispute) {
     const live = dispute.status === 'open' || dispute.status === 'under_review';
@@ -511,7 +527,50 @@ function ActionCards({
       </View>
     );
   }
-  if (isSeller && (order.status === 'PREPARING' || order.status === 'PAID' || order.status === 'SELLER_NOTIFIED')) {
+  if (isPickup && isBuyer && order.pickupCode && order.escrowStatus === 'blocked') {
+    cards.push(
+      <View key="pickup-buyer" style={[styles.action, { backgroundColor: '#E4F3EC' }]}>
+        <Txt variant="h3" color="#1F5C45">
+          Ton code de retrait
+        </Txt>
+        <Txt variant="caption" color="#2A6B52">
+          Donne ce code au vendeur au moment de récupérer ta commande.
+        </Txt>
+        <Txt style={styles.pickupDigits}>{order.pickupCode}</Txt>
+      </View>
+    );
+  }
+  if (
+    isPickup &&
+    isSeller &&
+    order.escrowStatus === 'blocked' &&
+    !['FUNDS_RELEASED', 'REFUNDED', 'DISPUTED'].includes(order.status)
+  ) {
+    cards.push(
+      <View key="pickup-seller" style={styles.action}>
+        <Txt variant="h3">Valider le retrait</Txt>
+        <Txt variant="caption">Demande le code à l’acheteur, saisis-le ici pour débloquer le paiement et remettre le colis.</Txt>
+        <Input
+          label="Code à 6 chiffres"
+          value={sellerCode}
+          onChangeText={setSellerCode}
+          keyboardType="number-pad"
+          maxLength={6}
+        />
+        <Button
+          title="Valider le code"
+          loading={busy}
+          disabled={sellerCode.trim().length < 4}
+          onPress={() => onVerifyPickup(sellerCode.trim())}
+          full
+        />
+        {['PAID', 'SELLER_NOTIFIED', 'PREPARING'].includes(order.status) ? (
+          <Button title="Rembourser l’acheteur" variant="danger" onPress={onRefund} disabled={busy} full />
+        ) : null}
+      </View>
+    );
+  }
+  if (isSeller && !isPickup && (order.status === 'PREPARING' || order.status === 'PAID' || order.status === 'SELLER_NOTIFIED')) {
     cards.push(
       <View key="courier" style={styles.action}>
         <Txt variant="h3">Demander un livreur</Txt>
@@ -534,7 +593,7 @@ function ActionCards({
       </View>
     );
   }
-  if (isBuyer && awaitingHandover && order.status !== 'COURIER_ASSIGNED') {
+  if (isBuyer && awaitingHandover && order.status !== 'COURIER_ASSIGNED' && !isPickup) {
     const arrived = order.status === 'DELIVERED';
     cards.push(
       <View key="recv" style={styles.action}>
@@ -542,6 +601,18 @@ function ActionCards({
         <Txt variant="caption">
           À la remise, ouvre le colis et vérifie l’article, puis appuie sur « Colis reçu ». Le livreur attend cette confirmation
           pour te laisser le colis. Les {formatGnf(order.amountGnf)} partent alors au vendeur : l’action est définitive.
+        </Txt>
+        <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
+        <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
+      </View>
+    );
+  }
+  if (isPickup && isBuyer && order.status === 'DELIVERED' && !order.buyerConfirmedAt) {
+    cards.push(
+      <View key="recv-pickup" style={styles.action}>
+        <Txt variant="h3">Colis remis — à toi de vérifier</Txt>
+        <Txt variant="caption">
+          Vérifie l’article puis confirme la réception. Les {formatGnf(order.amountGnf)} seront versés au vendeur.
         </Txt>
         <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
         <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
@@ -589,6 +660,14 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   pinImg: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
+  pickupDigits: {
+    fontFamily: fonts.bold,
+    fontSize: 32,
+    letterSpacing: 8,
+    textAlign: 'center',
+    color: '#1F5C45',
+    marginTop: 8,
+  },
   bubble: { maxWidth: '82%', padding: 12, borderRadius: 16, gap: 4 },
   mine: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 4 },
   theirs: { alignSelf: 'flex-start', backgroundColor: colors.white, borderBottomLeftRadius: 4 },

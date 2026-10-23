@@ -118,7 +118,9 @@ function kycMime(filename: string, mimeType: string, base64: string) {
   if (mime.startsWith('image/')) return mime;
   const ext = filename.toLowerCase().split('.').pop() ?? '';
   const byExt = Object.entries(IMAGE_EXT).find(([, e]) => e === ext || (e === 'jpg' && ext === 'jpeg'));
-  return byExt ? byExt[0] : null;
+  if (byExt) return byExt[0];
+  if (mime === 'application/octet-stream' && ext === 'pdf') return 'application/pdf';
+  return null;
 }
 
 function base64ToBytes(base64: string) {
@@ -266,7 +268,7 @@ export async function pickKycFiles(options: { multiple?: boolean } = {}) {
   const result = await DocumentPicker.getDocumentAsync({
     type: Platform.OS === 'web' ? 'image/*,application/pdf,.pdf' : ['image/*', 'application/pdf'],
     multiple: !!options.multiple,
-    copyToCacheDirectory: Platform.OS === 'ios',
+    copyToCacheDirectory: true,
   });
   if (result.canceled) return [];
   return result.assets;

@@ -145,6 +145,7 @@ export type Listing = {
   } | null;
   listingRating?: number;
   listingReviewsCount?: number;
+  pickupEnabled?: boolean;
   category?: { id: string; nameFr: string; nameEn: string };
 };
 
@@ -254,6 +255,8 @@ export type Order = {
   fulfillmentMode: 'courier' | 'pickup' | 'shopLocalDelivery';
   paymentMethod: PaymentMethod;
   pickupZoneId: string | null;
+  /** Code à 6 chiffres pour retrait en boutique / main propre. */
+  pickupCode?: string | null;
   disputeReason?: string;
   offerAmountGnf: number | null;
   originalAmountGnf: number;
@@ -401,6 +404,7 @@ export type Dispute = {
   sellerName: string;
   productTitle?: string;
   productImage?: string;
+  listingId?: string | null;
   amountGnf?: number;
   netGnf?: number;
   orderStatus?: string;

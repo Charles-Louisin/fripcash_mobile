@@ -47,6 +47,8 @@ export const fetchOrder = (id: string) => api.get<Order>(`/orders/${id}`);
 export const transitionOrder = (id: string, status: OrderStatus, note?: string) =>
   api.patch<Order>(`/orders/${id}/status`, { status, note });
 export const confirmReception = (id: string) => api.post<Order>(`/orders/${id}/confirm-reception`);
+export const verifyOrderPickupCode = (id: string, code: string) =>
+  api.post<Order>(`/orders/${id}/pickup-code/verify`, { code });
 export const requestCourier = (id: string) => api.post<Order>(`/orders/${id}/request-courier`);
 export const openDispute = (id: string, reason: string) =>
   api.post<{ id: string; status: string; reason: string }>(`/orders/${id}/disputes`, { reason });

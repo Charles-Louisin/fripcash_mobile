@@ -208,7 +208,11 @@ export function ShopApplicationFields({
       <View>
         <Txt variant="title">{shopTitleForRole(role)}</Txt>
         <Txt variant="caption">
-          Description, couverture et pièces KYC.
+          {role === "commerceLocal"
+            ? "Description, couverture et CNI."
+            : role === "grandeSurface"
+              ? "Description, couverture et registre de commerce (ou équivalent)."
+              : "Description, couverture et pièces KYC."}
         </Txt>
       </View>
 
@@ -325,14 +329,6 @@ export function ShopApplicationFields({
         values={value.soldCategories}
         onChange={(soldCategories) => set({ soldCategories })}
       />
-      <TagPicker
-        label={kind === "PROXIMITE" ? "Quartiers livrés (facultatif)" : "Communes livrées"}
-        hint="Affichées sur ta page et utilisées par le filtre « livraison vers »."
-        presets={communePresets}
-        values={value.deliveredCommunes}
-        onChange={(deliveredCommunes) => set({ deliveredCommunes })}
-      />
-
       {kind === "ENSEIGNE" ? (
         <>
           <Input
@@ -399,7 +395,11 @@ export function ShopApplicationFields({
       <View style={{ gap: 8 }}>
         <Txt variant="label">Pièces KYC</Txt>
         <Txt variant="caption">
-          Ajoute au moins une pièce (image ou PDF).
+          {role === "commerceLocal"
+            ? "Envoie ta CNI (image ou PDF)."
+            : role === "grandeSurface"
+              ? "Registre de commerce ou dossier équivalent (image ou PDF)."
+              : "Ajoute au moins une pièce (image ou PDF)."}
         </Txt>
         <Button
           title={busy === "doc" ? "Envoi…" : "Ajouter un justificatif"}
@@ -463,9 +463,6 @@ export function validateShopDraft(
   if (!draft.description.trim()) return "Ajoute une description.";
   if (!draft.documents.length) return "Ajoute au moins une pièce KYC.";
   if (!draft.soldCategories.length) return "Choisis au moins une catégorie dans « Ce que tu vends ».";
-  if (kind !== "PROXIMITE" && !draft.deliveredCommunes.length) {
-    return "Ajoute au moins une commune livrée.";
-  }
   if (kind === "ENSEIGNE") {
     if (!draft.storeAddress.trim()) return "Indique l’adresse du magasin.";
     if (!draft.deliveryDelay.trim()) return "Indique le délai de livraison annoncé.";

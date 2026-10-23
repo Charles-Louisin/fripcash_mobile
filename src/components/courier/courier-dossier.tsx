@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Badge, Button, Card, Input, toast, Txt } from '@/components/ui';
@@ -9,10 +9,8 @@ import { qk, useZones } from '@/hooks/queries';
 import {
   errorMessage,
   pickImages,
-  pickKycFiles,
   submitCourierKyc,
   updateCourierProfile,
-  uploadDocumentAsset,
   uploadPickedImage,
   type CourierProfile,
 } from '@/lib/api';
@@ -20,8 +18,6 @@ import { toE164 } from '@/lib/gn-phone';
 import { colors, radius } from '@/theme';
 
 const EXAMPLE = require('../../../assets/courier/portrait-example.jpg');
-
-type Doc = { url: string; mimeType?: string; name?: string };
 
 function localPhone(phone?: string) {
   return (phone || '').replace(/^\+224/, '');
@@ -72,8 +68,7 @@ function CourierDossierForm({ profile }: { profile: CourierProfile }) {
   const [zoneIds, setZoneIds] = useState<string[]>(courier?.zoneIds || []);
   const [portraitUrl, setPortraitUrl] = useState(courier?.portraitUrl || profile.avatarUrl || '');
   const [vehiclePhotoUrl, setVehiclePhotoUrl] = useState(courier?.vehiclePhotoUrl || '');
-  const [identity, setIdentity] = useState<Doc[]>(courier?.identityDocuments || []);
-  const [busy, setBusy] = useState<'portrait' | 'vehicle' | 'identity' | 'save' | null>(null);
+  const [busy, setBusy] = useState<'portrait' | 'vehicle' | 'save' | null>(null);
 
   const toggleZone = (id: string) => {
     setZoneIds((current) => (current.includes(id) ? current.filter((z) => z !== id) : [...current, id]));
@@ -107,24 +102,6 @@ function CourierDossierForm({ profile }: { profile: CourierProfile }) {
     }
   };
 
-  const pickIdentity = async () => {
-    setBusy('identity');
-    try {
-      const assets = await pickKycFiles({ multiple: true });
-      if (!assets.length) return;
-      const uploaded: Doc[] = [];
-      for (const asset of assets) {
-        const up = await uploadDocumentAsset(asset);
-        uploaded.push({ url: up.url, mimeType: up.mimeType, name: up.name });
-      }
-      setIdentity((current) => [...current, ...uploaded].slice(0, 6));
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const save = async () => {
     const e164 = toE164(phone);
     if (!name.trim()) return toast.error('Indique ton nom.');
@@ -148,14 +125,13 @@ function CourierDossierForm({ profile }: { profile: CourierProfile }) {
       } else {
         if (!portraitUrl) return toast.error('Ajoute ta photo portrait.');
         if (!vehiclePhotoUrl) return toast.error('Ajoute la photo du véhicule.');
-        if (!identity.length) return toast.error('Ajoute ta pièce d’identité.');
         await submitCourierKyc({
           portraitUrl,
           vehiclePhotoUrl,
           vehicle: vehicle.trim(),
           plate: plate.trim(),
           zoneIds,
-          identityDocuments: identity,
+          identityDocuments: [],
         });
         await updateCourierProfile({
           name: name.trim(),
@@ -182,8 +158,8 @@ function CourierDossierForm({ profile }: { profile: CourierProfile }) {
         />
         <Txt variant="body" color={colors.textMuted}>
           {locked
-            ? 'Tu peux modifier ton profil, ta photo, la marque et le matricule. La pièce d’identité et la photo du véhicule restent celles envoyées.'
-            : 'Envoie ton portrait, ta pièce d’identité et la photo du véhicule. L’équipe valide le dossier avant les missions.'}
+            ? 'Tu peux modifier ton profil, ta photo portrait, la marque et le matricule. La photo du véhicule reste celle envoyée.'
+            : 'Envoie ton portrait et la photo du véhicule. Aucun document KYC n’est demandé aux livreurs.'}
         </Txt>
         {courier?.verificationStatus === 'rejected' && courier.rejectionReason ? (
           <Txt variant="caption" color={colors.error}>
@@ -252,22 +228,6 @@ function CourierDossierForm({ profile }: { profile: CourierProfile }) {
             );
           })}
         </View>
-      </Card>
-
-      <Card style={{ gap: 10 }}>
-        <Txt variant="title">Pièce d’identité</Txt>
-        {locked ? <Txt variant="caption">Document verrouillé après envoi.</Txt> : null}
-        {identity.map((doc) => (
-          <Pressable key={doc.url} onPress={() => Linking.openURL(doc.url)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <Ionicons name={doc.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'} size={18} color={colors.primary} />
-            <Txt variant="caption" style={{ flex: 1 }} numberOfLines={1}>
-              {doc.name || 'Pièce'}
-            </Txt>
-          </Pressable>
-        ))}
-        {locked ? null : (
-          <Button title="Ajouter une image ou un PDF" variant="secondary" onPress={pickIdentity} loading={busy === 'identity'} />
-        )}
       </Card>
 
       <Card style={{ gap: 10 }}>

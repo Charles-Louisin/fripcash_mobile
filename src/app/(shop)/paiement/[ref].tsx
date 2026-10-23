@@ -21,6 +21,8 @@ export default function PaiementScreen() {
   });
   const status = pay.data?.payment.status;
   const orders = pay.data?.orders;
+  const multi = (orders?.length ?? 0) > 1;
+  const firstOrder = orders?.[0];
 
   useEffect(() => {
     if (status === 'success') {
@@ -30,12 +32,18 @@ export default function PaiementScreen() {
   }, [status, client]);
 
   useEffect(() => {
-    const first = orders?.[0];
-    if (status === 'success' && first) {
-      const t = setTimeout(() => router.replace({ pathname: '/commandes/[id]', params: { id: first.id } }), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [status, orders]);
+    if (status !== 'success' || !firstOrder) return;
+    const t = setTimeout(() => {
+      if (multi) router.replace(commandesHref);
+      else router.replace({ pathname: '/commandes/[id]', params: { id: firstOrder.id } });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [status, firstOrder, multi]);
+
+  const openOrders = () => {
+    if (multi || !firstOrder) router.replace(commandesHref);
+    else router.replace({ pathname: '/commandes/[id]', params: { id: firstOrder.id } });
+  };
 
   return (
     <Screen scroll={false} edges={['top', 'bottom']}>
@@ -57,14 +65,12 @@ export default function PaiementScreen() {
             <Txt variant="body" color={colors.textMuted} align="center">
               {formatGnf(pay.data?.payment.amountGnf)} bloqués en séquestre jusqu’à la réception.
             </Txt>
-            <Button
-              title="Voir la commande"
-              onPress={() =>
-                orders?.[0]
-                  ? router.replace({ pathname: '/commandes/[id]', params: { id: orders[0].id } })
-                  : router.replace(commandesHref)
-              }
-            />
+            {multi ? (
+              <Txt variant="caption" align="center">
+                {orders?.length} commandes séparées par vendeur : chaque pack garde sa propre discussion et son paiement.
+              </Txt>
+            ) : null}
+            <Button title={multi ? 'Voir mes commandes' : 'Voir la commande'} onPress={openOrders} />
           </>
         ) : null}
         {status === 'failed' || status === 'expired' ? (

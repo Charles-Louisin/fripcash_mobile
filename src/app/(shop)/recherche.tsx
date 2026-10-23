@@ -166,7 +166,7 @@ export default function RechercheScreen() {
           refreshing={listings.isFetching}
           onRefresh={() => listings.refetch()}
           ListEmptyComponent={
-            listings.isLoading ? undefined : (
+            listings.isLoading ? null : (
               <EmptyState
                 icon="search-outline"
                 title="Aucun article"

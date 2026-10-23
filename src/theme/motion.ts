@@ -7,6 +7,7 @@ export const stackMotion = {
   animationDuration: 340,
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
+  freezeOnBlur: true,
 };
 
 export const fadeMotion = {

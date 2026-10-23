@@ -1,12 +1,13 @@
 import { usePathname, type Href } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useMe } from '@/hooks/queries';
+import { useSessionActions } from '@/hooks/use-session-actions';
 import { fetchAdminStats } from '@/lib/api';
 
 import { DashboardMenuContext } from './dashboard-menu-context';
-import { LogoutDialog } from './logout-dialog';
+import { DRAWER_CLOSE_MS, LogoutDialog } from './logout-dialog';
 import { SideDrawer, type DrawerItem } from './side-drawer';
 
 type Row = { icon: DrawerItem['icon']; title: string; href: string; exact?: boolean; also?: string[] };
@@ -63,6 +64,13 @@ export function AdminMenuProvider({ children }: { children: ReactNode }) {
   const me = useMe();
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const { logout } = useSessionActions();
+
+  const runLogout = useCallback(async () => {
+    setOpen(false);
+    await new Promise((resolve) => setTimeout(resolve, DRAWER_CLOSE_MS));
+    await logout();
+  }, [logout]);
   const stats = useQuery({ queryKey: ['admin', 'stats', 30], queryFn: () => fetchAdminStats(30), staleTime: 60_000 });
 
   const sections = useMemo(() => {
@@ -93,12 +101,13 @@ export function AdminMenuProvider({ children }: { children: ReactNode }) {
         title="FripCash Admin"
         subtitle={me.data?.displayName || me.data?.email || 'Administration'}
         sections={sections}
-        onLogout={() => {
-          setOpen(false);
-          setLogoutOpen(true);
-        }}
+        onLogout={() => setLogoutOpen(true)}
       />
-      <LogoutDialog visible={logoutOpen} onClose={() => setLogoutOpen(false)} />
+      <LogoutDialog
+        visible={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={runLogout}
+      />
     </DashboardMenuContext.Provider>
   );
 }

@@ -1,12 +1,13 @@
 import { usePathname, type Href } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
 import { useAccountType } from '@/hooks/use-account-type';
 import { useAuth, usePurchases, useSales, useUnreadMessagesCount } from '@/hooks/queries';
+import { useSessionActions } from '@/hooks/use-session-actions';
 import { commandesHref, litigesHref } from '@/lib/nav';
 
 import { DashboardMenuContext } from './dashboard-menu-context';
-import { LogoutDialog } from './logout-dialog';
+import { DRAWER_CLOSE_MS, LogoutDialog } from './logout-dialog';
 import { SideDrawer, type DrawerItem } from './side-drawer';
 
 function active(pathname: string, href: Href) {
@@ -23,6 +24,16 @@ export function DashboardMenuProvider({ children }: { children: ReactNode }) {
   const unreadMessages = useUnreadMessagesCount();
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const { logout } = useSessionActions();
+
+  // Le dialog de confirmation s'ouvre par-dessus le drawer (deux Modals natifs
+  // empilés) ; on ne referme le drawer qu'une fois confirmé, pendant l'attente
+  // qui précède le changement de session — jamais en ouvrant un autre Modal.
+  const runLogout = useCallback(async () => {
+    setOpen(false);
+    await new Promise((resolve) => setTimeout(resolve, DRAWER_CLOSE_MS));
+    await logout();
+  }, [logout]);
 
   const sections = useMemo(() => {
     const sellerOrders = sales.data ?? [];
@@ -107,13 +118,14 @@ export function DashboardMenuProvider({ children }: { children: ReactNode }) {
           title="Tableau de bord"
           subtitle={me?.seller?.shopName ? `${type.label} · ${me.seller.shopName}` : type.label}
           sections={sections}
-          onLogout={() => {
-            setOpen(false);
-            setLogoutOpen(true);
-          }}
+          onLogout={() => setLogoutOpen(true)}
         />
       ) : null}
-      <LogoutDialog visible={logoutOpen} onClose={() => setLogoutOpen(false)} />
+      <LogoutDialog
+        visible={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={runLogout}
+      />
     </DashboardMenuContext.Provider>
   );
 }

@@ -21,7 +21,7 @@ import {
   toast,
   Txt,
 } from '@/components/ui';
-import { qk, useDispute } from '@/hooks/queries';
+import { qk, useDispute, useOrder } from '@/hooks/queries';
 import {
   addDisputeMessage,
   errorMessage,
@@ -86,6 +86,7 @@ export function DisputeChat({ id }: { id: string }) {
   const client = useQueryClient();
   const q = useDispute(id, 5_000);
   const d = q.data;
+  const orderQ = useOrder(d?.orderId);
   const listRef = useRef<FlatList>(null);
   const composerSpace = useComposerSpace();
   const [text, setText] = useState('');
@@ -193,6 +194,14 @@ export function DisputeChat({ id }: { id: string }) {
   const net = d.netGnf || d.amountGnf || 0;
   const buyerShare = Math.round((net * buyerPercent) / 100);
   const image = mediaUrl(d.productImage);
+  const listingId = d.listingId ?? orderQ.data?.items?.[0]?.listingId ?? null;
+  const openArticle = () => {
+    if (!listingId) {
+      toast.info('Article introuvable pour ce litige.');
+      return;
+    }
+    router.push({ pathname: '/article/[id]', params: { id: listingId } });
+  };
 
   const renderItem = ({ item }: { item: FeedItem }) => {
     if (item.kind === 'opened') {
@@ -326,7 +335,12 @@ export function DisputeChat({ id }: { id: string }) {
             </View>
           </View>
 
-          <View style={styles.pin}>
+          <Pressable
+            onPress={openArticle}
+            disabled={!listingId}
+            style={({ pressed }) => [styles.pin, listingId && pressed ? { opacity: 0.92 } : null]}
+            accessibilityRole="button"
+            accessibilityLabel="Voir l’article du litige">
             {image ? <Image source={{ uri: image }} style={styles.pinImg} contentFit="cover" /> : <View style={styles.pinImg} />}
             <View style={{ flex: 1, gap: 2 }}>
               <Txt variant="bodyStrong" numberOfLines={1}>
@@ -345,7 +359,8 @@ export function DisputeChat({ id }: { id: string }) {
                 ) : null}
               </View>
             </View>
-          </View>
+            {listingId ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
+          </Pressable>
 
           <FlatList
             ref={listRef}

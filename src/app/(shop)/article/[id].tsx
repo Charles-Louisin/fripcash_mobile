@@ -28,10 +28,8 @@ import { useCart } from '@/hooks/use-cart';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import {
   createConversation,
-  createListingComment,
   createOffer,
   errorMessage,
-  fetchListingComments,
   fetchListingReviews,
   listingImages,
   mediaUrl,
@@ -130,9 +128,6 @@ export default function ArticleScreen() {
   const [offerAmount, setOfferAmount] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
-  const [comment, setComment] = useState('');
-  const [sending, setSending] = useState(false);
-  const [commentsShown, setCommentsShown] = useState(5);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState(0);
   const [zoom, setZoom] = useState(false);
@@ -142,11 +137,6 @@ export default function ArticleScreen() {
   const tariffs = useTariffs();
   const shop = useSeller(listing?.sellerProfile?.id);
 
-  const comments = useQuery({
-    queryKey: ['listing-comments', id],
-    queryFn: () => fetchListingComments(id),
-    enabled: !!id,
-  });
   const reviews = useQuery({
     queryKey: ['listing-reviews', id],
     queryFn: () => fetchListingReviews(id),
@@ -212,22 +202,6 @@ export default function ArticleScreen() {
       }
     });
 
-  const sendComment = () =>
-    requireAuth(async () => {
-      if (!comment.trim() || sending) return;
-      setSending(true);
-      try {
-        await createListingComment(id, comment.trim());
-        setComment('');
-        await comments.refetch();
-        toast.success('Commentaire publié');
-      } catch (e) {
-        toast.error(errorMessage(e));
-      } finally {
-        setSending(false);
-      }
-    }, 'Connecte-toi pour commenter.');
-
   if (listingQ.isLoading) {
     return (
       <Screen scroll={false} padded={false}>
@@ -268,12 +242,13 @@ export default function ArticleScreen() {
   const palette = listedColors(listing);
   const offerReady = Number(offerAmount.replace(/\s/g, '')) > 0;
   const reviewRows = reviews.data ?? [];
-  const commentRows = comments.data ?? [];
   const deliveryLine = shop.data?.deliveryDelay
     ? `Livraison en ${shop.data.deliveryDelay}`
     : seller?.shopKind === 'proximite'
-      ? 'Retrait en boutique ou livraison de proximité'
-      : '';
+      ? 'Retrait par code en boutique'
+      : listing.destination === 'SECONDE_MAIN' && listing.pickupEnabled
+        ? 'Retrait à main propre possible chez le vendeur'
+        : '';
 
   return (
     <Screen
@@ -440,39 +415,6 @@ export default function ArticleScreen() {
           ) : (
             <Txt variant="caption">Pas encore d’avis.</Txt>
           )}
-        </View>
-
-        <View style={styles.block}>
-          <Txt style={styles.blockTitle}>Questions & commentaires ({commentRows.length})</Txt>
-          {commentRows.slice(0, commentsShown).map((c) => (
-            <View key={c.id} style={styles.review}>
-              <View style={styles.reviewTop}>
-                <Txt style={styles.reviewName}>{c.authorName || 'Membre FripCash'}</Txt>
-                <Txt variant="caption">{reviewWhen(c.createdAt)}</Txt>
-              </View>
-              <Txt style={styles.desc}>{c.body}</Txt>
-            </View>
-          ))}
-          {commentRows.length > commentsShown ? (
-            <Pressable onPress={() => setCommentsShown((n) => n + 5)} hitSlop={6}>
-              <Txt variant="label" color={colors.primary}>
-                Voir plus de commentaires
-              </Txt>
-            </Pressable>
-          ) : null}
-          {!commentRows.length ? <Txt variant="caption">Pose ta question au vendeur ici.</Txt> : null}
-          {!me.data?.isAdmin ? (
-            <View style={{ gap: 8 }}>
-              <Input value={comment} onChangeText={setComment} placeholder="Écrire un commentaire…" multiline />
-              <Button
-                title="Publier"
-                size="sm"
-                onPress={sendComment}
-                loading={sending}
-                disabled={!comment.trim()}
-              />
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.protect}>

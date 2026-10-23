@@ -13,9 +13,7 @@ const ITEMS: TabItem[] = [
 export default function LivreurTabs() {
   return (
     <Tabs
-      tabBar={(props) => (
-        <AppTabBar state={props.state} emitter={props.emitter} navigateToTab={props.navigateToTab} items={ITEMS} dark />
-      )}
+      tabBar={(props) => <AppTabBar state={props.state} navigation={props.navigation} items={ITEMS} dark />}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="gains" />

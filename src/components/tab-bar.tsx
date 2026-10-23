@@ -10,10 +10,7 @@ import { colors, fonts, shadow } from '@/theme';
 
 type TabBarRenderProps = {
   state: { index: number; routes: { key: string; name: string }[] };
-  emitter: {
-    emit: (event: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean };
-  };
-  navigateToTab: (routeKey: string) => void;
+  navigation: any;
 };
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -33,8 +30,7 @@ export type TabItem = {
 
 export function AppTabBar({
   state,
-  emitter,
-  navigateToTab,
+  navigation,
   items,
   onCenterPress,
   dark,
@@ -59,9 +55,9 @@ export function AppTabBar({
           }
           const route = state.routes.find((r) => r.name === item.route);
           if (!route) return;
-          const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
           if (event.defaultPrevented) return;
-          if (!active || item.route === 'index') navigateToTab(route.key);
+          if (!active || item.route === 'index') navigation.navigate(item.route);
         }}
         style={styles.item}>
         <View>

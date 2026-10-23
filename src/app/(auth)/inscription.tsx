@@ -119,7 +119,7 @@ export default function InscriptionScreen() {
           vehicle: courier.vehicle.trim(),
           plate: courier.plate.trim(),
           zoneIds: courier.zoneIds,
-          identityDocuments: courier.identity,
+          identityDocuments: [],
         });
         toast.success('Compte créé. Ton dossier livreur est envoyé.');
       } catch (e) {

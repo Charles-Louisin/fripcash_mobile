@@ -1,38 +1,41 @@
 import { Text, type TextProps, type TextStyle } from 'react-native';
 
-import { colors, fonts } from '@/theme';
+import { fonts, colors, type FontTokens } from '@/theme';
 
 type Variant = 'display' | 'h1' | 'h2' | 'h3' | 'title' | 'body' | 'bodyStrong' | 'caption' | 'label' | 'small';
 
-const VARIANTS: Record<Variant, TextStyle> = {
-  display: { fontFamily: fonts.displayBold, fontSize: 30, lineHeight: 36, color: colors.text },
-  h1: { fontFamily: fonts.display, fontSize: 26, lineHeight: 32, color: colors.text },
-  h2: { fontFamily: fonts.display, fontSize: 21, lineHeight: 27, color: colors.text },
-  h3: { fontFamily: fonts.display, fontSize: 17, lineHeight: 23, color: colors.text },
-  title: { fontFamily: fonts.display, fontSize: 15, lineHeight: 21, color: colors.text },
-  body: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20, color: colors.text },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, color: colors.text },
-  caption: { fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17, color: colors.textMuted },
-  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18, color: colors.text },
-  small: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, color: colors.textMuted },
-};
+function variants(f: FontTokens): Record<Variant, TextStyle> {
+  return {
+    display: { fontFamily: f.displayBold, fontSize: 30, lineHeight: 36, color: colors.text },
+    h1: { fontFamily: f.display, fontSize: 26, lineHeight: 32, color: colors.text },
+    h2: { fontFamily: f.display, fontSize: 21, lineHeight: 27, color: colors.text },
+    h3: { fontFamily: f.display, fontSize: 17, lineHeight: 23, color: colors.text },
+    title: { fontFamily: f.display, fontSize: 15, lineHeight: 21, color: colors.text },
+    body: { fontFamily: f.medium, fontSize: 14, lineHeight: 20, color: colors.text },
+    bodyStrong: { fontFamily: f.semibold, fontSize: 14, lineHeight: 20, color: colors.text },
+    caption: { fontFamily: f.medium, fontSize: 12.5, lineHeight: 17, color: colors.textMuted },
+    label: { fontFamily: f.semibold, fontSize: 13, lineHeight: 18, color: colors.text },
+    small: { fontFamily: f.semibold, fontSize: 11, lineHeight: 14, color: colors.textMuted },
+  };
+}
 
 export type TxtProps = TextProps & {
   variant?: Variant;
   color?: string;
   align?: TextStyle['textAlign'];
-  weight?: keyof typeof fonts;
+  weight?: keyof FontTokens;
 };
 
 export function Txt({ variant = 'body', color, align, weight, style, ...rest }: TxtProps) {
+  const f = fonts;
   return (
     <Text
       {...rest}
       style={[
-        VARIANTS[variant],
+        variants(f)[variant],
         color ? { color } : null,
         align ? { textAlign: align } : null,
-        weight ? { fontFamily: fonts[weight] } : null,
+        weight ? { fontFamily: f[weight] } : null,
         style,
       ]}
     />

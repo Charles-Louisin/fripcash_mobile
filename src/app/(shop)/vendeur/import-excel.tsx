@@ -12,7 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 const COLUMNS = [
   { name: 'Titre', note: 'obligatoire' },
   { name: 'Prix', note: 'prix net en GNF, obligatoire' },
-  { name: 'Quantité', note: '1 par défaut' },
+  { name: 'Quantité (Stock)', note: '1 par défaut' },
   { name: 'Description', note: 'facultatif' },
   { name: 'Catégorie', note: 'nom exact d’une catégorie FripCash' },
   { name: 'État', note: 'facultatif' },

@@ -5,10 +5,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, EmptyState, Screen, ScreenHeader, Sheet, Stepper, toast, Txt } from '@/components/ui';
 import { useAuth, useMe, useTariffs } from '@/hooks/queries';
-import { bundleDiscountGnf, lineTotalGnf, useCart, type CartLine } from '@/hooks/use-cart';
+import { bundleDiscountGnf, cartSellerGroups, lineTotalGnf, useCart, type CartLine } from '@/hooks/use-cart';
 import { errorMessage } from '@/lib/api';
 import { formatGnf } from '@/lib/format';
-import { cartShippingGnf } from '@/lib/shipping';
+import { sellerShippingGnf } from '@/lib/shipping';
 import { colors, fonts, radius } from '@/theme';
 
 function CartLines({ onCheckout }: { onCheckout?: () => void }) {
@@ -17,11 +17,12 @@ function CartLines({ onCheckout }: { onCheckout?: () => void }) {
   const me = useMe();
   const tariffs = useTariffs();
   const zoneId = me.data?.shippingZoneId ?? '';
-  const shipping = cartShippingGnf(
+  const sellerGroups = cartSellerGroups(cart.lines);
+  const shipping = sellerShippingGnf(
     tariffs.data ?? [],
     zoneId,
-    cart.lines.map((line) => line.zoneId),
-  );
+    sellerGroups.map((group) => ({ key: group.key, zoneId: group.zoneId, pickup: group.proximite })),
+  ).reduce((sum, seller) => sum + seller.amountGnf, 0);
   const bundle = bundleDiscountGnf(cart.lines);
   const goods = cart.subtotal - bundle;
   const total = goods + shipping;

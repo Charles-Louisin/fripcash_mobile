@@ -8,13 +8,21 @@ import { createZone, deleteZone, errorMessage, fetchZones, updateZone } from '@/
 export default function AdminZones() {
   const client = useQueryClient();
   const zones = useQuery({ queryKey: ['admin', 'zones'], queryFn: fetchZones });
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['admin', 'zones'] });
   const add = useMutation({
-    mutationFn: () => createZone({ code: code.trim(), nameFr: name.trim(), nameEn: name.trim() }),
+    mutationFn: () => {
+      const label = name.trim();
+      const code = label
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 32);
+      return createZone({ code: code || `ZONE_${Date.now()}`, nameFr: label, nameEn: label });
+    },
     onSuccess: () => {
-      setCode('');
       setName('');
       toast.success('Zone créée');
       refresh();
@@ -26,14 +34,12 @@ export default function AdminZones() {
     <Screen keyboard>
       <ScreenHeader title="Zones" />
       <View style={{ gap: 10, marginBottom: 16 }}>
-        <Input label="Code" value={code} onChangeText={setCode} placeholder="RAT" />
-        <Input label="Nom" value={name} onChangeText={setName} placeholder="Ratoma" />
-        <Button title="Ajouter la zone" onPress={() => add.mutate()} loading={add.isPending} disabled={!code.trim() || !name.trim()} />
+        <Input label="Nom de la zone" value={name} onChangeText={setName} placeholder="Ratoma" />
+        <Button title="Ajouter la zone" onPress={() => add.mutate()} loading={add.isPending} disabled={!name.trim()} />
       </View>
       {(zones.data ?? []).map((zone) => (
         <Card key={zone.id} style={{ marginBottom: 10, gap: 8 }}>
           <Txt variant="bodyStrong">{zone.nameFr}</Txt>
-          <Txt variant="caption">{zone.code}</Txt>
           <Badge label={zone.isActive === false ? 'Inactive' : 'Active'} tone={zone.isActive === false ? 'neutral' : 'success'} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button

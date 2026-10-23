@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     paddingVertical: 0,
-    ...(Platform.OS === 'web' ? { outlineWidth: 0 } : null),
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' as const } : null),
   },
   inputPlain: { fontSize: 13 },
 });

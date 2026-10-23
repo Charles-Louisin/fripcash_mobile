@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useMemo, useState, type ComponentProps } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Pressable,
@@ -22,14 +23,24 @@ import {
   type CatalogFilterState,
 } from "@/components/catalog/catalog-filters";
 import { ListingCard } from "@/components/catalog/listing-card";
+import { PickupCodeBanner } from "@/components/catalog/pickup-code-banner";
+import { ShopActionsBar } from "@/components/catalog/shop-actions-bar";
 import { shopCover } from "@/components/catalog/shop-card";
 import { coverContentPosition } from "@/lib/cover-focus";
 import { ShopLikeButton } from "@/components/catalog/shop-like-button";
 import { ShopMark } from "@/components/catalog/shop-mark";
 import { ShopBottomNav } from "@/components/catalog/shop-nav";
-import { Chip, IconButton, SectionHeader, toast, Txt } from "@/components/ui";
+import { Chip, IconButton, SectionHeader, Sheet, toast, Txt } from "@/components/ui";
 import { useAuth, useCategories } from "@/hooks/queries";
-import { errorMessage, reportContent, type Listing, type PublicShop } from "@/lib/api";
+import { useRequireAuth } from "@/hooks/use-require-auth";
+import {
+  createConversation,
+  errorMessage,
+  fetchSellerReviews,
+  reportContent,
+  type Listing,
+  type PublicShop,
+} from "@/lib/api";
 import { listingImages } from "@/lib/api/media";
 import { formatNumber } from "@/lib/format";
 import { goHome } from "@/lib/nav";
@@ -45,7 +56,7 @@ function kindOf(shop: PublicShop): Kind {
   return "neuf";
 }
 
-const ALL = "Tous";
+const ALL = "Tout";
 
 function norm(value: string) {
   return value
@@ -99,6 +110,8 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
   const kind = kindOf(shop);
   const insets = useSafeAreaInsets();
   const { isAuthed } = useAuth();
+  const requireAuth = useRequireAuth();
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const { width } = useWindowDimensions();
   const productGap = 13;
   const productCols = 3;
@@ -115,6 +128,11 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
   });
   const categories = useCategories();
   const listings = useMemo(() => shop.listings ?? [], [shop.listings]);
+  const sellerReviews = useQuery({
+    queryKey: ["seller-reviews", shop.id],
+    queryFn: () => fetchSellerReviews(shop.id),
+    enabled: reviewsOpen,
+  });
   const categoryOf = useMemo(() => {
     const names = new Map(
       (categories.data ?? []).map((c) => [c.id, c.nameFr]),
@@ -174,6 +192,22 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
       toast.error(errorMessage(e));
     }
   };
+  const contactShop = () => {
+    const listing = listings[0];
+    const userId = listing?.sellerProfile?.userId;
+    requireAuth(async () => {
+      try {
+        const conv = await createConversation({
+          listingId: listing?.id,
+          participantIds: userId ? [userId] : undefined,
+        });
+        router.push({ pathname: "/messages/[id]", params: { id: conv.id } });
+      } catch (e) {
+        toast.error(errorMessage(e));
+      }
+    }, "Connecte-toi pour contacter cette boutique.");
+  };
+
   const menu = () =>
     Alert.alert("Signaler la boutique", "Pourquoi signales-tu cette boutique ?", [
       { text: "Arnaque ou fraude", onPress: () => report("Arnaque ou fraude") },
@@ -232,42 +266,44 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
         contentContainerStyle={{ paddingBottom: kind === "enseigne" ? 28 : 36 }}
         style={{ flex: 1, backgroundColor: colors.background }}
       >
-        <View
-          style={[
-            styles.heroWrap,
-            kind !== "neuf" && kind !== "quartier" && styles.heroInset,
-            (kind === "neuf" || kind === "quartier") && { marginBottom: 0 },
-            flowNav && { marginTop: 8 },
-            kind === "enseigne" && { marginBottom: 0 },
-          ]}
-        >
+        {kind !== "dressing" ? (
           <View
             style={[
-              styles.hero,
-              (kind === "neuf" || kind === "quartier") && styles.heroBleed,
-              kind === "enseigne"
-                ? { height: coverH, borderRadius: 28 }
-                : kind !== "neuf" && kind !== "quartier"
-                  ? styles.heroRound
-                  : null,
+              styles.heroWrap,
+              kind !== "neuf" && kind !== "quartier" && styles.heroInset,
+              (kind === "neuf" || kind === "quartier") && { marginBottom: 0 },
+              flowNav && { marginTop: 8 },
+              kind === "enseigne" && { marginBottom: 0 },
             ]}
           >
-            {shopCover(shop) ? (
-              <Image
-                source={shopCover(shop)!}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                contentPosition={coverContentPosition(shop.coverUrl)}
-              />
-            ) : null}
-            {kind === "neuf" ? (
-              <LinearGradient
-                colors={["rgba(36,20,18,0.05)", "rgba(36,20,18,0.45)"]}
-                style={StyleSheet.absoluteFill}
-              />
-            ) : null}
+            <View
+              style={[
+                styles.hero,
+                (kind === "neuf" || kind === "quartier") && styles.heroBleed,
+                kind === "enseigne"
+                  ? { height: coverH, borderRadius: 28 }
+                  : kind !== "neuf" && kind !== "quartier"
+                    ? styles.heroRound
+                    : null,
+              ]}
+            >
+              {shopCover(shop) ? (
+                <Image
+                  source={shopCover(shop)!}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  contentPosition={coverContentPosition(shop.coverUrl)}
+                />
+              ) : null}
+              {kind === "neuf" ? (
+                <LinearGradient
+                  colors={["rgba(36,20,18,0.05)", "rgba(36,20,18,0.45)"]}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         <View
           style={[
@@ -294,17 +330,45 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
               </View>
             </View>
           ) : null}
-          {kind === "dressing" || kind === "neuf" ? (
-            <View style={[styles.floatMark, kind === "neuf" && { top: -28 }]}>
+          {kind === "neuf" ? (
+            <View style={[styles.floatMark, { top: -28 }]}>
               <ShopMark value={shop.avatarUrl} name={shop.shopName} size={72} />
             </View>
           ) : null}
 
-          {kind !== "enseigne" ? (
+          {kind === "dressing" ? (
+            <View style={styles.dressingHead}>
+              <ShopMark value={shop.avatarUrl} name={shop.shopName} size={64} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Txt style={[styles.name, styles.nameSerif]} numberOfLines={2}>
+                  {shop.shopName}
+                </Txt>
+                {place ? (
+                  <View style={styles.inline}>
+                    <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+                    <Txt variant="caption">{place}</Txt>
+                  </View>
+                ) : null}
+                <View style={styles.particulierPill}>
+                  <Txt style={styles.particulierText}>Particulier</Txt>
+                </View>
+                <View style={[styles.inline, { flexWrap: "wrap", marginTop: 2 }]}>
+                  <Ionicons name="star" size={14} color={colors.star} />
+                  <Txt style={styles.rateText}>{(shop.rating ?? 0).toFixed(1)}</Txt>
+                  <Txt variant="caption">({formatNumber(shop.reviewsCount)} avis)</Txt>
+                  <Txt variant="caption"> · </Txt>
+                  <Txt variant="caption">{formatNumber(count)} articles</Txt>
+                </View>
+                {shop.bio ? <Txt variant="caption">{shop.bio}</Txt> : null}
+              </View>
+            </View>
+          ) : null}
+
+          {kind !== "enseigne" && kind !== "dressing" ? (
             <View
               style={[
                 styles.identity,
-                (kind === "dressing" || kind === "neuf") && { marginTop: 36 },
+                kind === "neuf" && { marginTop: 36 },
               ]}
             >
               <View style={{ flex: 1, gap: 4 }}>
@@ -316,9 +380,6 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
                     {shop.shopName}
                   </Txt>
                 </View>
-                {kind === "dressing" && shop.bio ? (
-                  <Txt variant="caption">{shop.bio}</Txt>
-                ) : null}
                 {kind !== "neuf" ? (
                   <View style={styles.inline}>
                     <Ionicons
@@ -335,7 +396,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
                   <Txt variant="small">{shop.storeAddress}</Txt>
                 ) : null}
               </View>
-              {kind === "dressing" || kind === "quartier" ? (
+              {kind === "quartier" ? (
                 <View style={styles.ratePill}>
                   <Ionicons name="star" size={12} color={colors.star} />
                   <Txt style={styles.rateText}>
@@ -402,7 +463,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
             </View>
           ) : null}
 
-          {kind !== "dressing" && shop.bio ? (
+          {kind !== "dressing" && kind !== "neuf" && shop.bio ? (
             <Txt
               variant="body"
               color={colors.textMuted}
@@ -410,6 +471,27 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
             >
               {shop.bio}
             </Txt>
+          ) : null}
+
+          {kind === "dressing" || kind === "neuf" ? (
+            <ShopActionsBar onContact={contactShop} onReviews={() => setReviewsOpen(true)} />
+          ) : null}
+
+          {(kind === "dressing" || kind === "neuf") && chipLabels.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {[ALL, ...chipLabels].map((label) => (
+                <Chip
+                  key={label}
+                  label={label}
+                  active={chip === label}
+                  onPress={() => setChip(label)}
+                />
+              ))}
+            </ScrollView>
           ) : null}
 
           {shop.vacationEnabled ? (
@@ -428,49 +510,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
             </View>
           ) : null}
 
-          {kind === "dressing" ? (
-            <View style={styles.stats}>
-              <View style={styles.stat}>
-                <Ionicons name="bag-outline" size={16} color={colors.text} />
-                <Txt style={styles.statNum}>{formatNumber(count)}</Txt>
-                <Txt variant="caption">articles</Txt>
-              </View>
-              <View style={{ flex: 1 }} />
-              <ShopLikeButton sellerId={shop.id} likedByMe={shop.likedByMe} />
-            </View>
-          ) : null}
-
-          {kind === "quartier" ? (
-            <View style={[styles.inline, { marginTop: 12, alignItems: "flex-start" }]}>
-              <Ionicons
-                name="bicycle-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <Txt variant="caption" style={{ flex: 1 }}>
-                <Txt style={styles.serviceTitle}>Livraison de proximité</Txt>
-                {communes.length ? ` · ${communes.join(", ")}` : ""}
-              </Txt>
-            </View>
-          ) : null}
-
-          {kind === "neuf" && chipLabels.length ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chips}
-            >
-              {[ALL, ...chipLabels].map((label) => (
-                <Chip
-                  key={label}
-                  label={label}
-                  icon={categoryIcon(label)}
-                  active={chip === label}
-                  onPress={() => setChip(label)}
-                />
-              ))}
-            </ScrollView>
-          ) : null}
+          {kind === "quartier" ? <PickupCodeBanner /> : null}
 
           {kind === "enseigne" && chipLabels.length ? (
             <ScrollView
@@ -561,7 +601,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
                 />
               }
             />
-            {(kind === "quartier" || kind === "dressing") && chipLabels.length ? (
+            {kind === "quartier" && chipLabels.length ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -638,6 +678,24 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
         value={filters}
         onApply={setFilters}
       />
+      <Sheet visible={reviewsOpen} onClose={() => setReviewsOpen(false)} title={`Avis · ${shop.shopName}`}>
+        {(sellerReviews.data ?? []).length ? (
+          (sellerReviews.data ?? []).map((review) => (
+            <View key={review.id} style={{ gap: 6, marginBottom: 14 }}>
+              <View style={styles.inline}>
+                <Ionicons name="star" size={14} color={colors.star} />
+                <Txt style={styles.rateText}>{review.rating.toFixed(1)}</Txt>
+                <Txt variant="caption">{review.authorName || review.userName || "Client"}</Txt>
+              </View>
+              {review.comment ? <Txt variant="body">{review.comment}</Txt> : null}
+            </View>
+          ))
+        ) : sellerReviews.isLoading ? (
+          <Txt variant="caption">Chargement…</Txt>
+        ) : (
+          <Txt variant="caption">Pas encore d’avis.</Txt>
+        )}
+      </Sheet>
     </View>
   );
 }
@@ -816,6 +874,23 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   deliveryText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    color: colors.primaryDark,
+  },
+  dressingHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+  },
+  particulierPill: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  particulierText: {
     fontFamily: fonts.semibold,
     fontSize: 11,
     color: colors.primaryDark,

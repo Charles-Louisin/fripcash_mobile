@@ -13,9 +13,17 @@ export function tariffAmountGnf(tariffs: Tariff[], fromZoneId: string | null | u
   return Math.min(...incoming.map((t) => Number(t.amountGnf) || 0));
 }
 
-export function cartShippingGnf(tariffs: Tariff[], toZoneId: string, itemZoneIds: (string | null | undefined)[]) {
-  if (!toZoneId) return 0;
-  const origins = [...new Set(itemZoneIds.filter((id): id is string => !!id))];
-  if (!origins.length) return tariffAmountGnf(tariffs, null, toZoneId);
-  return origins.reduce((sum, from) => sum + tariffAmountGnf(tariffs, from, toZoneId), 0);
+export type SellerDelivery = {
+  key: string;
+  zoneId: string | null;
+  pickup: boolean;
+};
+
+/** Frais par vendeur : le trajet part de la zone de chaque vendeur, pas d'un panier global. */
+export function sellerShippingGnf(tariffs: Tariff[], toZoneId: string, sellers: SellerDelivery[]) {
+  if (!toZoneId) return sellers.map((seller) => ({ key: seller.key, amountGnf: 0 }));
+  return sellers.map((seller) => ({
+    key: seller.key,
+    amountGnf: seller.pickup ? 0 : tariffAmountGnf(tariffs, seller.zoneId, toZoneId),
+  }));
 }

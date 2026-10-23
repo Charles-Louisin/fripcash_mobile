@@ -90,7 +90,7 @@ export function ZoneSelect({
       value={value}
       onChange={onChange}
       error={error}
-      options={zones.map((z) => ({ value: z.id, label: z.nameFr, hint: z.code }))}
+      options={zones.map((z) => ({ value: z.id, label: z.nameFr }))}
     />
   );
 }

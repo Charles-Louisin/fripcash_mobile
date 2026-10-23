@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Button, Card, Input, toast, Txt } from '@/components/ui';
 import { useZones } from '@/hooks/queries';
-import { errorMessage, pickImages, pickKycFiles, uploadDocumentAsset, uploadPickedImage } from '@/lib/api';
+import { errorMessage, pickImages, uploadPickedImage } from '@/lib/api';
 import { colors, radius } from '@/theme';
 
 const EXAMPLE = require('../../../assets/courier/portrait-example.jpg');
@@ -16,7 +16,6 @@ export type CourierSignupDraft = {
   zoneIds: string[];
   portraitUrl: string;
   vehiclePhotoUrl: string;
-  identity: { url: string; mimeType?: string; name?: string }[];
 };
 
 export const EMPTY_COURIER_DRAFT: CourierSignupDraft = {
@@ -25,12 +24,10 @@ export const EMPTY_COURIER_DRAFT: CourierSignupDraft = {
   zoneIds: [],
   portraitUrl: '',
   vehiclePhotoUrl: '',
-  identity: [],
 };
 
 export function validateCourierDraft(draft: CourierSignupDraft) {
   if (!draft.portraitUrl) return 'Ajoute ta photo portrait.';
-  if (!draft.identity.length) return 'Ajoute ta pièce d’identité (image ou PDF).';
   if (!draft.vehiclePhotoUrl) return 'Ajoute la photo de ta moto.';
   if (!draft.vehicle.trim() || !draft.plate.trim()) return 'Indique la marque et le matricule de la moto.';
   if (!draft.zoneIds.length) return 'Choisis au moins une zone.';
@@ -45,7 +42,7 @@ export function CourierSignupFields({
   onChange: (next: CourierSignupDraft) => void;
 }) {
   const zones = useZones();
-  const [busy, setBusy] = useState<'portrait' | 'vehicle' | 'identity' | null>(null);
+  const [busy, setBusy] = useState<'portrait' | 'vehicle' | null>(null);
   const set = (patch: Partial<CourierSignupDraft>) => onChange({ ...value, ...patch });
 
   const pickPortrait = async () => {
@@ -78,30 +75,11 @@ export function CourierSignupFields({
     }
   };
 
-  const pickIdentity = async () => {
-    setBusy('identity');
-    try {
-      const assets = await pickKycFiles({ multiple: true });
-      if (!assets.length) return;
-      const uploaded: CourierSignupDraft['identity'] = [];
-      for (const asset of assets) {
-        const up = await uploadDocumentAsset(asset);
-        uploaded.push({ url: up.url, mimeType: up.mimeType, name: up.name });
-      }
-      set({ identity: [...value.identity, ...uploaded].slice(0, 6) });
-      toast.success(uploaded.length > 1 ? `${uploaded.length} pièces ajoutées.` : 'Pièce ajoutée.');
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   return (
     <View style={{ gap: 14 }}>
       <View>
         <Txt variant="title">Ton dossier livreur</Txt>
-        <Txt variant="caption">Photo de profil, pièce d’identité et image du véhicule.</Txt>
+        <Txt variant="caption">Photo portrait et image du véhicule uniquement — aucun document KYC.</Txt>
       </View>
 
       <Card style={{ gap: 12 }}>
@@ -172,25 +150,6 @@ export function CourierSignupFields({
             );
           })}
         </View>
-      </Card>
-
-      <Card style={{ gap: 10 }}>
-        <Txt variant="title">Pièce d’identité</Txt>
-        {value.identity.map((doc) => (
-          <View key={doc.url} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <Ionicons name={doc.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'} size={18} color={colors.primary} />
-            <Txt variant="caption" style={{ flex: 1 }} numberOfLines={1}>
-              {doc.name || 'Pièce'}
-            </Txt>
-            <Pressable
-              hitSlop={8}
-              onPress={() => set({ identity: value.identity.filter((item) => item.url !== doc.url) })}
-              accessibilityLabel="Retirer la pièce">
-              <Ionicons name="trash" size={16} color={colors.error} />
-            </Pressable>
-          </View>
-        ))}
-        <Button title={busy === 'identity' ? 'Envoi…' : 'Ajouter une image ou un PDF'} variant="secondary" onPress={pickIdentity} loading={busy === 'identity'} />
       </Card>
 
       <Card style={{ gap: 10 }}>

@@ -16,8 +16,7 @@ export default function ShopTabsLayout() {
       tabBar={(props) => (
         <AppTabBar
           state={props.state}
-          emitter={props.emitter}
-          navigateToTab={props.navigateToTab}
+          navigation={props.navigation}
           items={items}
           onCenterPress={isAdmin ? undefined : () => goToSell(isConsumer, type.canPublish)}
         />
