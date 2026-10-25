@@ -172,6 +172,23 @@ export default function ArticleScreen() {
     }
   };
 
+  const addOnly = async () => {
+    if (!listing || soldOut) {
+      toast.error('Stock épuisé');
+      return;
+    }
+    if (cart.lines.some((line) => line.listingId === listing.id)) {
+      toast.info('Déjà dans le panier');
+      return;
+    }
+    try {
+      await cart.add({ listing, quantity: 1 });
+      toast.success('Ajouté au panier');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
   const contact = () =>
     requireAuth(async () => {
       try {
@@ -242,6 +259,7 @@ export default function ArticleScreen() {
   const palette = listedColors(listing);
   const offerReady = Number(offerAmount.replace(/\s/g, '')) > 0;
   const reviewRows = reviews.data ?? [];
+  const inCart = cart.lines.some((line) => line.listingId === listing.id);
   const deliveryLine = shop.data?.deliveryDelay
     ? `Livraison en ${shop.data.deliveryDelay}`
     : seller?.shopKind === 'proximite'
@@ -264,14 +282,24 @@ export default function ArticleScreen() {
                 <Button title="Faire une offre" variant="outline" size="lg" onPress={() => requireAuth(() => setOfferOpen(true))} style={{ flex: 1 }} />
               ) : null}
               {showCart ? (
-                <Button
-                  title="Acheter"
-                  size="lg"
-                  variant={soldOut ? 'muted' : 'primary'}
-                  onPress={addToCart}
-                  loading={cart.adding}
-                  style={{ flex: 1 }}
-                />
+                <>
+                  <Pressable
+                    onPress={addOnly}
+                    disabled={soldOut || cart.adding}
+                    style={[styles.cartAdd, (soldOut || cart.adding) && { opacity: 0.55 }]}
+                    accessibilityLabel={inCart ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                    accessibilityRole="button">
+                    <Ionicons name={inCart ? 'checkmark' : 'bag-add-outline'} size={24} color={colors.primary} />
+                  </Pressable>
+                  <Button
+                    title="Acheter"
+                    size="lg"
+                    variant={soldOut ? 'muted' : 'primary'}
+                    onPress={addToCart}
+                    loading={cart.adding}
+                    style={{ flex: 1 }}
+                  />
+                </>
               ) : null}
             </View>
           </StickyFooter>
@@ -617,6 +645,15 @@ const styles = StyleSheet.create({
   },
   bleed: { flexGrow: 0, marginHorizontal: -16, paddingLeft: 16 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 6 },
+  cartAdd: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   linePrice: { fontFamily: fonts.bold, fontSize: 16, color: colors.text },
   send: {

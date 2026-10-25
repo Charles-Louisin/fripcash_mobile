@@ -112,6 +112,7 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
   const { isAuthed } = useAuth();
   const requireAuth = useRequireAuth();
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [dressingInfoH, setDressingInfoH] = useState(0);
   const { width } = useWindowDimensions();
   const productGap = 13;
   const productCols = 3;
@@ -338,8 +339,15 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
 
           {kind === "dressing" ? (
             <View style={styles.dressingHead}>
-              <ShopMark value={shop.avatarUrl} name={shop.shopName} size={64} />
-              <View style={{ flex: 1, gap: 4 }}>
+              <ShopMark
+                value={shop.avatarUrl}
+                name={shop.shopName}
+                size={Math.max(80, dressingInfoH)}
+              />
+              <View
+                style={{ flex: 1, gap: 4 }}
+                onLayout={(e) => setDressingInfoH(e.nativeEvent.layout.height)}
+              >
                 <Txt style={[styles.name, styles.nameSerif]} numberOfLines={2}>
                   {shop.shopName}
                 </Txt>

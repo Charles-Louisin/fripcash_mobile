@@ -21,14 +21,6 @@ import { colors } from '@/theme';
 
 type ShopTarget = 'boutique' | 'commerceLocal' | 'grandeSurface';
 
-const NEXT: Record<string, ShopTarget[]> = {
-  particulier: ['boutique', 'commerceLocal', 'grandeSurface'],
-  boutique: ['commerceLocal', 'grandeSurface'],
-  commerceLocal: ['grandeSurface'],
-  grandeSurface: [],
-  acheteur: [],
-};
-
 const OPTIONS: { id: ShopTarget; title: string; text: string }[] = [
   { id: 'boutique', title: 'Boutique', text: 'Articles neufs, livrés dans toute la ville.' },
   { id: 'commerceLocal', title: 'Commerce local', text: 'Boutique de quartier. Le rôle s’ouvre après validation du KYC.' },
@@ -36,7 +28,7 @@ const OPTIONS: { id: ShopTarget; title: string; text: string }[] = [
 ];
 
 export default function EvoluerScreen() {
-  const { isConsumer } = useAuth();
+  const { isConsumer, isCourier } = useAuth();
   const { me, type } = useAccountType();
   const client = useQueryClient();
   const dossier = useQuery({
@@ -49,7 +41,11 @@ export default function EvoluerScreen() {
   const [zoneId, setZoneId] = useState<string | null>(me?.shippingZoneId ?? null);
   const [busy, setBusy] = useState(false);
   const pending = dossier.data?.status === 'pending';
-  const choices = NEXT[type.id] ?? [];
+  const choices: ShopTarget[] = isCourier
+    ? type.id === 'boutique'
+      ? []
+      : ['boutique']
+    : OPTIONS.map((option) => option.id).filter((id) => id !== type.id);
 
   if (!isConsumer) {
     router.replace('/');
@@ -104,12 +100,14 @@ export default function EvoluerScreen() {
         </Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <Txt variant="h2" style={{ flex: 1 }}>
-            {type.label}
+            {isCourier && !type.isSeller ? 'Livreur' : type.label}
           </Txt>
-          <Badge label={type.label} />
+          <Badge label={isCourier && !type.isSeller ? 'Livreur' : type.label} />
         </View>
         <Txt variant="body" color={colors.textMuted}>
-          {type.description}
+          {isCourier && !type.isSeller
+            ? 'Tu livres avec FripCash. Tu peux aussi acheter et évoluer vers vendeur particulier ou boutique d’articles neufs.'
+            : type.description}
         </Txt>
         {type.destination ? <Txt variant="bodyStrong">Univers : {type.destination}</Txt> : null}
         {type.requiresAdminApproval ? <Txt variant="caption">{verificationLabel(type.verificationStatus)}</Txt> : null}
@@ -148,7 +146,11 @@ export default function EvoluerScreen() {
 
       {!choices.length && type.id !== 'acheteur' ? (
         <Card style={{ marginBottom: 14 }}>
-          <Txt variant="body">Tu es déjà au niveau enseigne. Il n’y a pas de rôle au-dessus.</Txt>
+          <Txt variant="body">
+            {isCourier
+              ? 'En tant que livreur, tu peux vendre uniquement en particulier ou en articles neufs.'
+              : 'Il n’y a pas d’autre rôle à ouvrir pour le moment.'}
+          </Txt>
         </Card>
       ) : null}
 

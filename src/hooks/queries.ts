@@ -69,7 +69,8 @@ export function useAuth() {
   return {
     isAuthed: !!token,
     isCourier: !!token && audience === 'COURIER',
-    isConsumer: !!token && audience !== 'COURIER',
+    // Un livreur est aussi un acheteur : il garde l'accès à la boutique.
+    isConsumer: !!token,
     isAdmin: !!token && isAdminUser(audience, user),
     user,
   };

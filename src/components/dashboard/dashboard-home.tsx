@@ -73,7 +73,7 @@ function StatCard({
 }
 
 export function DashboardHome() {
-  const { isConsumer } = useAuth();
+  const { isConsumer, isCourier } = useAuth();
   const { me, type } = useAccountType();
   const sales = useSales(type.isSeller);
   const purchases = usePurchases();
@@ -129,10 +129,23 @@ export function DashboardHome() {
       >
         <View style={{ flex: 1, gap: 4 }}>
           <Txt variant="h1">Bonjour, {firstName}</Txt>
-          <Txt variant="caption">{type.description}</Txt>
+          <Txt variant="caption">
+            {isCourier && !type.isSeller
+              ? 'Tu livres avec FripCash. Tu peux aussi acheter et vendre en particulier ou en articles neufs.'
+              : type.description}
+          </Txt>
         </View>
-        <Badge label={type.label} />
+        <Badge label={isCourier && !type.isSeller ? 'Livreur' : type.label} />
       </View>
+
+      {isCourier ? (
+        <Card onPress={() => router.push('/livreur')} style={{ marginBottom: 16 }}>
+          <Txt variant="bodyStrong">Tableau de bord livreur</Txt>
+          <Txt variant="caption" style={{ marginTop: 4 }}>
+            Missions, gains et disponibilité.
+          </Txt>
+        </Card>
+      ) : null}
 
       {type.id === "acheteur" ? (
         <View

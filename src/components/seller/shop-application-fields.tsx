@@ -208,11 +208,9 @@ export function ShopApplicationFields({
       <View>
         <Txt variant="title">{shopTitleForRole(role)}</Txt>
         <Txt variant="caption">
-          {role === "commerceLocal"
-            ? "Description, couverture et CNI."
-            : role === "grandeSurface"
-              ? "Description, couverture et registre de commerce (ou équivalent)."
-              : "Description, couverture et pièces KYC."}
+          {role === "grandeSurface"
+            ? "Description, couverture et registre de commerce (ou équivalent)."
+            : "Description, couverture et CNI."}
         </Txt>
       </View>
 
@@ -395,11 +393,9 @@ export function ShopApplicationFields({
       <View style={{ gap: 8 }}>
         <Txt variant="label">Pièces KYC</Txt>
         <Txt variant="caption">
-          {role === "commerceLocal"
-            ? "Envoie ta CNI (image ou PDF)."
-            : role === "grandeSurface"
-              ? "Registre de commerce ou dossier équivalent (image ou PDF)."
-              : "Ajoute au moins une pièce (image ou PDF)."}
+          {role === "grandeSurface"
+            ? "Registre de commerce ou dossier équivalent (image ou PDF)."
+            : "Envoie ta CNI (image ou PDF)."}
         </Txt>
         <Button
           title={busy === "doc" ? "Envoi…" : "Ajouter un justificatif"}

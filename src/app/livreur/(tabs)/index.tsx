@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, Button, EmptyState, Segmented, Sheet, Txt, toast } from '@/components/ui';
+import { Badge, Button, EmptyState, IconButton, Segmented, Sheet, Txt, toast } from '@/components/ui';
 import { qk, useCourierMe, useMyMissions, useOpenMissions, useZones } from '@/hooks/queries';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { acceptMission, errorMessage, setCourierAvailability, type Order } from '@/lib/api';
@@ -82,7 +82,23 @@ export default function MissionsScreen() {
             </Txt>
             </View>
           </View>
-          <Switch value={available} onValueChange={approved ? toggle : undefined} disabled={!approved} trackColor={{ true: colors.primary }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <IconButton
+              icon="home-outline"
+              label="Accueil de l’application"
+              color={colors.onDark}
+              background={colors.darkSoft}
+              onPress={() => router.push('/')}
+            />
+            <IconButton
+              icon="settings-outline"
+              label="Paramètres"
+              color={colors.onDark}
+              background={colors.darkSoft}
+              onPress={() => router.push('/reglages')}
+            />
+            <Switch value={available} onValueChange={approved ? toggle : undefined} disabled={!approved} trackColor={{ true: colors.primary }} />
+          </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
           <View>

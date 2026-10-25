@@ -17,7 +17,7 @@ function active(pathname: string, href: Href) {
 
 export function DashboardMenuProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { isConsumer } = useAuth();
+  const { isConsumer, isCourier } = useAuth();
   const { me, type } = useAccountType();
   const sales = useSales(type.isSeller);
   const purchases = usePurchases();
@@ -116,7 +116,13 @@ export function DashboardMenuProvider({ children }: { children: ReactNode }) {
           visible={open}
           onClose={() => setOpen(false)}
           title="Tableau de bord"
-          subtitle={me?.seller?.shopName ? `${type.label} · ${me.seller.shopName}` : type.label}
+          subtitle={
+            isCourier && !type.isSeller
+              ? 'Livreur'
+              : me?.seller?.shopName
+                ? `${type.label} · ${me.seller.shopName}`
+                : type.label
+          }
           sections={sections}
           onLogout={() => setLogoutOpen(true)}
         />

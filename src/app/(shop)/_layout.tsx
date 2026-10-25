@@ -4,7 +4,15 @@ import { DashboardMenuProvider } from '@/components/dashboard/dashboard-menu';
 import { useAuth, useMe } from '@/hooks/queries';
 import { fadeMotion, sheetMotion, stackMotion } from '@/theme/motion';
 
-const ADMIN_EXACT = ['/', '/explorer', '/recherche'];
+const ADMIN_EXACT = [
+  '/',
+  '/explorer',
+  '/recherche',
+  '/reglages',
+  '/a-propos',
+  '/mentions-legales',
+  '/profil',
+];
 const ADMIN_PREFIXES = ['/admin', '/article/', '/boutique/', '/univers/'];
 
 function adminAllowed(pathname: string) {

@@ -24,7 +24,6 @@ export function variantForShop(shop: PublicShop): ShopCardVariant {
 }
 
 export function cardWidthFor(variant: ShopCardVariant, screenWidth: number) {
-  if (variant === 'dressing') return 156;
   if (variant === 'quartier') return 172;
   return screenWidth - 32;
 }
@@ -47,7 +46,8 @@ export function ShopSlider({
 }) {
   const variant = UNIVERSE_VARIANT[universe.destination];
   const cardW = cardWidthFor(variant, screenWidth);
-  const paged = variant === 'neuf' || variant === 'enseigne';
+  const paged = variant !== 'quartier';
+  const skeletonH = variant === 'quartier' ? 180 : variant === 'dressing' ? 116 : 200;
 
   return (
     <View style={{ marginBottom: 22 }}>
@@ -60,7 +60,7 @@ export function ShopSlider({
       {loading ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {[0, 1].map((i) => (
-            <Skeleton key={i} width={cardW} height={paged ? 200 : 180} radius={radius.lg} />
+            <Skeleton key={i} width={cardW} height={skeletonH} radius={radius.lg} />
           ))}
         </ScrollView>
       ) : error && !shops.length ? (

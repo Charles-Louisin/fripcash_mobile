@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Txt } from '@/components/ui';
-import { colors, fonts, radius } from '@/theme';
+import { colors, fonts } from '@/theme';
 
 type Props = {
   onContact: () => void;
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 44,
     paddingHorizontal: 10,
-    borderRadius: radius.pill,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.primary,
     backgroundColor: colors.white,

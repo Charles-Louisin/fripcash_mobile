@@ -8,16 +8,17 @@ import { AppHeader, SearchBar } from '@/components/catalog/app-header';
 import { FilterSheet, SHOP_SORTS, sortShops, type CatalogFilterState } from '@/components/catalog/catalog-filters';
 import { ShopBottomNav } from '@/components/catalog/shop-nav';
 import { ShopCard, type ShopCardVariant } from '@/components/catalog/shop-card';
-import { Chip, EmptyState, ErrorState, IconButton, Txt } from '@/components/ui';
+import { Chip, EmptyState, ErrorState, IconButton, Skeleton, Txt } from '@/components/ui';
 import { useCart } from '@/hooks/use-cart';
 import { useShops, useZones } from '@/hooks/queries';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import type { PublicShop } from '@/lib/api';
 import { universeBySlug } from '@/lib/domain';
 import { goHome } from '@/lib/nav';
-import { colors, fonts } from '@/theme';
+import { colors, fonts, radius } from '@/theme';
 
 const ALL = 'tous';
+const SLIDER_GAP = 10;
 
 function norm(value: string) {
   return value
@@ -49,10 +50,12 @@ export default function UniversScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<CatalogFilterState>({ sort: 'recent' });
   const variant = cardVariant(universe.destination);
-  const isGrid = variant === 'dressing' || variant === 'quartier';
+  const isSlider = variant === 'dressing';
+  const isGrid = variant === 'quartier';
   const isNeuf = universe.destination === 'ARTICLES_NEUFS';
   const isQuartier = universe.destination === 'QUARTIER_BOUTIQUES';
   const isEnseigne = universe.destination === 'ENSEIGNES';
+  const sliderW = width - 32;
   const [chip, setChip] = useState(ALL);
 
   const shops = useShops({
@@ -172,33 +175,59 @@ export default function UniversScreen() {
     </View>
   );
 
+  const refresh = (
+    <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+  );
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      {shops.isError && !(shops.data ?? []).length ? <ErrorState error={shops.error} onRetry={() => shops.refetch()} /> : null}
-      <FlatList
-        style={{ flex: 1 }}
-        data={shown}
-        key={isGrid ? 'grid' : 'list'}
-        keyExtractor={(s) => s.id}
-        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        numColumns={isGrid ? 2 : 1}
-        ListHeaderComponent={header}
-        columnWrapperStyle={isGrid ? styles.gridRow : undefined}
-        contentContainerStyle={[isGrid ? styles.contentGrid : styles.contentList, !shown.length && { flexGrow: 1 }]}
-        ListEmptyComponent={
-          shops.isLoading ? null : (
-            <EmptyState
-              icon={universe.icon}
-              title={universe.destination === 'SECONDE_MAIN' ? 'Aucun dressing pour le moment' : 'Aucune boutique'}
-            />
-          )
-        }
-        renderItem={({ item }) => (
-          <View style={isGrid ? undefined : styles.listItem}>
-            <ShopCard shop={item} variant={variant} width={isGrid ? cardW : undefined} />
-          </View>
-        )}
-      />
+      {isSlider ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 28 }} refreshControl={refresh}>
+          {header}
+          {shops.isError && !(shops.data ?? []).length ? <ErrorState error={shops.error} onRetry={() => shops.refetch()} /> : null}
+          {shops.isLoading ? (
+            <View style={styles.sliderRow}>
+              {[0, 1].map((i) => (
+                <Skeleton key={i} width={sliderW} height={116} radius={radius.lg} />
+              ))}
+            </View>
+          ) : !shown.length ? (
+            <EmptyState icon={universe.icon} title="Aucun dressing pour le moment" />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={sliderW + SLIDER_GAP}
+              snapToAlignment="start"
+              contentContainerStyle={styles.sliderRow}>
+              {shown.map((shop) => (
+                <ShopCard key={shop.id} shop={shop} variant={variant} width={sliderW} />
+              ))}
+            </ScrollView>
+          )}
+        </ScrollView>
+      ) : (
+        <FlatList
+          style={{ flex: 1 }}
+          data={shown}
+          key={isGrid ? 'grid' : 'list'}
+          keyExtractor={(s) => s.id}
+          refreshControl={refresh}
+          numColumns={isGrid ? 2 : 1}
+          ListHeaderComponent={header}
+          columnWrapperStyle={isGrid ? styles.gridRow : undefined}
+          contentContainerStyle={[isGrid ? styles.contentGrid : styles.contentList, !shown.length && { flexGrow: 1 }]}
+          ListEmptyComponent={
+            shops.isLoading ? null : <EmptyState icon={universe.icon} title="Aucune boutique" />
+          }
+          renderItem={({ item }) => (
+            <View style={isGrid ? undefined : styles.listItem}>
+              <ShopCard shop={item} variant={variant} width={isGrid ? cardW : undefined} />
+            </View>
+          )}
+        />
+      )}
       <ShopBottomNav />
       <FilterSheet
         visible={filtersOpen}
@@ -225,6 +254,7 @@ const styles = StyleSheet.create({
   sort: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   sortText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.primary },
   gridRow: { gap: 10, paddingHorizontal: 16 },
+  sliderRow: { gap: SLIDER_GAP, paddingHorizontal: 16, paddingVertical: 4 },
   content: { paddingBottom: 28 },
   contentGrid: { gap: 12, paddingBottom: 28 },
   contentList: { gap: 18, paddingBottom: 28 },

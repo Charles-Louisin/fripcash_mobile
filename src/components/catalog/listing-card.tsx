@@ -55,7 +55,11 @@ export function ListingCard({
   const brand = variant === 'brandStore';
   const brandMeta = brand ? listing.description || (listing.conditionNote && listing.conditionNote !== 'Neuf' ? listing.conditionNote : '') : '';
   const showHeart = variant !== 'localStore';
-  const showPhotoCart = variant === 'localStore' || (variant === 'standard' && quickAdd);
+  const showPhotoCart =
+    variant === 'localStore' ||
+    variant === 'home' ||
+    variant === 'secondHand' ||
+    (variant === 'standard' && quickAdd);
   const showBodyCart = variant === 'newItem' || variant === 'brandStore';
 
   const add = async () => {

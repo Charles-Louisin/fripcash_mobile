@@ -11,7 +11,7 @@ import {
 } from '@/components/seller/shop-application-fields';
 import { SelectField } from '@/components/select-field';
 import { Badge, Button, Card, Input, Screen, ScreenHeader, toast, Txt } from '@/components/ui';
-import { qk, useMe } from '@/hooks/queries';
+import { qk, useAuth, useMe } from '@/hooks/queries';
 import { verificationLabel } from '@/lib/account-type';
 import {
   applyForShop,
@@ -57,6 +57,7 @@ function draftFrom(v: SellerVerification, zoneId: string): ShopDraft {
 
 export default function DemandeBoutiqueScreen() {
   const client = useQueryClient();
+  const { isCourier } = useAuth();
   const me = useMe();
   const [verif, setVerif] = useState<SellerVerification | null>(null);
   const [role, setRole] = useState<ShopRole>('boutique');
@@ -130,11 +131,15 @@ export default function DemandeBoutiqueScreen() {
             label="Type de boutique"
             value={role}
             onChange={(v) => setRole(v as ShopRole)}
-            options={[
-              { value: 'boutique', label: 'Boutique (articles neufs)' },
-              { value: 'commerceLocal', label: 'Commerce local' },
-              { value: 'grandeSurface', label: 'Enseigne / grande surface' },
-            ]}
+            options={
+              isCourier
+                ? [{ value: 'boutique', label: 'Boutique (articles neufs)' }]
+                : [
+                    { value: 'boutique', label: 'Boutique (articles neufs)' },
+                    { value: 'commerceLocal', label: 'Commerce local' },
+                    { value: 'grandeSurface', label: 'Enseigne / grande surface' },
+                  ]
+            }
           />
           <ShopApplicationFields role={role} value={draft} onChange={setDraft} />
           <Button title="Envoyer le dossier" onPress={submit} loading={busy} full />

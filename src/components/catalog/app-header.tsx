@@ -8,7 +8,7 @@ import { useCart } from '@/hooks/use-cart';
 import { colors, fonts, radius } from '@/theme';
 
 export function AppHeader() {
-  const { isConsumer, isAdmin } = useAuth();
+  const { isConsumer, isAdmin, isCourier } = useAuth();
   const unread = useUnreadCount();
   const favorites = useFavoriteIds().size;
   const { count } = useCart();
@@ -18,6 +18,7 @@ export function AppHeader() {
       <View style={styles.header}>
         <Logo size={28} />
         <View style={{ flex: 1 }} />
+        <IconButton icon="settings-outline" label="Paramètres" onPress={() => router.push('/reglages')} />
         <IconButton icon="speedometer-outline" label="Tableau de bord admin" onPress={() => router.push('/admin')} />
       </View>
     );
@@ -26,6 +27,9 @@ export function AppHeader() {
     <View style={styles.header}>
       <Logo size={28} />
       <View style={{ flex: 1 }} />
+      {isCourier ? (
+        <IconButton icon="bicycle-outline" label="Espace livreur" onPress={() => router.push('/livreur')} />
+      ) : null}
       <IconButton icon="notifications-outline" label="Notifications" badge={unread > 0} onPress={guard('/notifications')} />
       <IconButton icon="heart-outline" label="Favoris" badge={favorites || undefined} onPress={guard('/favoris')} />
       <IconButton icon="bag-outline" label="Panier" badge={count || undefined} onPress={() => router.push('/panier')} />

@@ -71,12 +71,15 @@ export const useSession = create<SessionState>((set) => ({
       ]);
       const user = rawUser ? (JSON.parse(rawUser) as AuthUser) : null;
       setAuthToken(token);
+      const audience = token ? (user?.authAudience ?? 'CONSUMER') : null;
       set({
         hydrated: true,
         onboarded: onboarded === '1',
         token,
         user: token ? user : null,
-        audience: token ? (user?.authAudience ?? 'CONSUMER') : null,
+        audience,
+        // Le livreur démarre sur son tableau de bord ; l'accueil boutique reste accessible via son bouton.
+        enterDashboard: audience === 'COURIER',
       });
     } catch {
       set({ hydrated: true });

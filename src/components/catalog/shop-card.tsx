@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { Rating, Txt } from "@/components/ui";
@@ -94,6 +95,7 @@ export function ShopCard({
   const { width: screenW } = useWindowDimensions();
   const count = listingCount(shop);
   const cover = shopCover(shop);
+  const [infoH, setInfoH] = useState(0);
 
   if (variant === "enseigne" || variant === "neuf") {
     const cardH = Math.round(
@@ -240,9 +242,12 @@ export function ShopCard({
           <ShopMark
             value={shop.avatarUrl || mediaUrl(shop.avatarUrl)}
             name={shop.shopName}
-            size={52}
+            size={Math.max(64, infoH)}
           />
-          <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+          <View
+            style={{ flex: 1, gap: 4, minWidth: 0 }}
+            onLayout={(e) => setInfoH(e.nativeEvent.layout.height)}
+          >
             <Txt style={styles.dressingName} numberOfLines={1}>
               {shop.shopName}
             </Txt>

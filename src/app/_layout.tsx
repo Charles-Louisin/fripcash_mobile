@@ -101,11 +101,11 @@ export default function RootLayout() {
             <Stack.Protected guard={onboarded && unverified}>
               <Stack.Screen name="verification" options={fadeMotion} />
             </Stack.Protected>
-            <Stack.Protected guard={onboarded && !unverified && !isCourier}>
-              <Stack.Screen name="(shop)" />
-            </Stack.Protected>
             <Stack.Protected guard={onboarded && !unverified && isCourier}>
               <Stack.Screen name="livreur" />
+            </Stack.Protected>
+            <Stack.Protected guard={onboarded && !unverified}>
+              <Stack.Screen name="(shop)" />
             </Stack.Protected>
             <Stack.Protected guard={onboarded && !isAuthed}>
               <Stack.Screen name="(auth)" options={sheetMotion} />
