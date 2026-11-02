@@ -8,6 +8,7 @@ import type {
   Order,
   OrderStatus,
   Payment,
+  PaymentConfig,
   PaymentMethod,
   SalesChartPoint,
   WalletBalance,
@@ -33,12 +34,17 @@ export type CheckoutInput = {
   shippingCostGnf?: number;
   toZoneId?: string;
   offerAmountGnf?: number;
+  /** Lien vers l'app (deep link) où revenir après la page de paiement hébergée. */
+  appReturnUrl?: string;
 };
 
 export const checkout = (body: CheckoutInput) =>
   api.post<{ payment: Payment; orders: Order[] }>('/checkout', body);
+export const fetchPaymentConfig = () => api.get<PaymentConfig>('/payments/config');
 export const fetchPayment = (ref: string) =>
   api.get<{ payment: Payment; orders: Order[] }>(`/payments/${encodeURIComponent(ref)}`);
+export const verifyPayment = (ref: string) =>
+  api.post<{ payment: Payment }>(`/payments/${encodeURIComponent(ref)}/verify`);
 
 export const fetchPurchases = () => api.get<Order[]>('/orders/purchases');
 export const fetchSales = () => api.get<Order[]>('/orders/sales');

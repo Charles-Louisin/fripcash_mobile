@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, useWindowDimensions, View, type ViewToken } from 'react-native';
+import { FlatList, Pressable, StyleSheet, useWindowDimensions, View, type ListViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Logo, Txt } from '@/components/ui';
@@ -42,7 +42,7 @@ export default function OnboardingScreen() {
   const last = index === SLIDES.length - 1;
   const imageSize = Math.min(width * 0.72, height * 0.34);
 
-  const onViewable = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewable = useCallback(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     if (viewableItems[0]?.index != null) setIndex(viewableItems[0].index);
   }, []);
 

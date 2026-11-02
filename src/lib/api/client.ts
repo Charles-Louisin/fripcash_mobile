@@ -62,6 +62,7 @@ type RequestOptions = {
   body?: unknown;
   anonymous?: boolean;
   timeoutMs?: number;
+  headers?: Record<string, string>;
 };
 
 const MAX_IN_FLIGHT = 8;
@@ -110,6 +111,7 @@ async function request<T>(method: string, path: string, options: RequestOptions 
   await acquireSlot();
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (!options.anonymous && authToken) headers.Authorization = `Bearer ${authToken}`;

@@ -11,7 +11,6 @@ function SettingsForm({ initial }: { initial: PlatformSettings }) {
   const client = useQueryClient();
   const [standard, setStandard] = useState(() => percent(initial.commissionRateStandard));
   const [proximite, setProximite] = useState(() => percent(initial.commissionRateProximite));
-  const [windowHours, setWindowHours] = useState(() => String(initial.disputeWindowHours ?? ''));
   const [maintenance, setMaintenance] = useState(() => !!initial.maintenanceMode);
 
   const save = useMutation({
@@ -19,7 +18,6 @@ function SettingsForm({ initial }: { initial: PlatformSettings }) {
       updatePlatformSettings({
         commissionRateStandard: Number(standard.replace(',', '.')) / 100,
         commissionRateProximite: Number(proximite.replace(',', '.')) / 100,
-        disputeWindowHours: Number(windowHours) || undefined,
         maintenanceMode: maintenance,
       }),
     onSuccess: () => {
@@ -34,7 +32,6 @@ function SettingsForm({ initial }: { initial: PlatformSettings }) {
     <View style={{ gap: 12 }}>
       <Input label="Commission standard (%)" value={standard} onChangeText={setStandard} keyboardType="decimal-pad" />
       <Input label="Commission proximité (%)" value={proximite} onChangeText={setProximite} keyboardType="decimal-pad" />
-      <Input label="Fenêtre de litige (heures)" value={windowHours} onChangeText={setWindowHours} keyboardType="number-pad" />
       <Button
         title={maintenance ? 'Maintenance activée' : 'Maintenance désactivée'}
         variant={maintenance ? 'danger' : 'secondary'}

@@ -71,7 +71,7 @@ function eventCopy(status: string, order: Order) {
   const name = order.courierName || 'le livreur';
   switch (status) {
     case 'PAID':
-      return { title: 'Payé — en séquestre', text: 'Le paiement est sécurisé jusqu’à confirmation de réception.' };
+      return { title: 'Payé — paiement protégé', text: 'FripCash conserve le montant jusqu’à ta confirmation de réception.' };
     case 'SELLER_NOTIFIED':
       return { title: 'Vendeur notifié', text: 'La boutique a été informée de ta commande.' };
     case 'PREPARING':
@@ -264,7 +264,7 @@ export default function OrderChatScreen() {
             </Txt>
             <Txt variant="caption">{shortOrderId(order.id)}</Txt>
             <Badge
-              label={order.escrowStatus === 'blocked' ? 'Payé · en séquestre' : ORDER_STATUS_LABELS[order.status]}
+              label={order.escrowStatus === 'blocked' ? 'Payé · protégé' : ORDER_STATUS_LABELS[order.status]}
               tone={order.escrowStatus === 'blocked' ? 'warning' : orderStatusTone(order.status)}
             />
           </View>
@@ -600,7 +600,8 @@ function ActionCards({
         <Txt variant="h3">{arrived ? 'Colis remis — à toi de vérifier' : 'Ton colis arrive'}</Txt>
         <Txt variant="caption">
           À la remise, ouvre le colis et vérifie l’article, puis appuie sur « Colis reçu ». Le livreur attend cette confirmation
-          pour te laisser le colis. Les {formatGnf(order.amountGnf)} partent alors au vendeur : l’action est définitive.
+          pour te laisser le colis. Le vendeur est alors payé : l’action est définitive et tu ne pourras plus ouvrir de
+          litige. En cas de souci, signale-le avant de confirmer.
         </Txt>
         <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
         <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
@@ -612,13 +613,17 @@ function ActionCards({
       <View key="recv-pickup" style={styles.action}>
         <Txt variant="h3">Colis remis — à toi de vérifier</Txt>
         <Txt variant="caption">
-          Vérifie l’article puis confirme la réception. Les {formatGnf(order.amountGnf)} seront versés au vendeur.
+          Vérifie l’article puis confirme la réception. Le vendeur sera alors payé et aucun litige ne sera plus possible.
         </Txt>
         <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
         <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
       </View>
     );
-  } else if (isBuyer && !['REFUNDED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING', 'DISPUTED'].includes(order.status)) {
+  } else if (
+    isBuyer &&
+    !order.buyerConfirmedAt &&
+    !['REFUNDED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING', 'DISPUTED'].includes(order.status)
+  ) {
     cards.push(
       <Pressable key="signal" onPress={onDispute} style={{ alignSelf: 'center', padding: 8 }}>
         <Txt variant="label" color={colors.primary}>

@@ -120,7 +120,7 @@ export const DONE_STATUSES = ['DELIVERED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING']
 export const PAYMENT_METHOD_LABELS = {
   OM_GN: 'Orange Money',
   MTN_GN: 'MTN MoMo',
-  CINETPAY: 'CinetPay',
+  CHAPCHAPPAY: 'Chap Chap Pay',
 } as const;
 
 export const FULFILLMENT_LABELS = {

@@ -238,6 +238,11 @@ export type Order = {
   buyerId: string;
   sellerId: string;
   courierId: string | null;
+  /** Commande globale (panier) à laquelle appartient cette commande vendeur. */
+  parentOrderId?: string | null;
+  orderNumber?: string | null;
+  /** Reversement du vendeur, indépendant du statut de livraison. */
+  payoutStatus?: 'not_eligible' | 'eligible' | 'pending' | 'processing' | 'paid' | 'failed' | 'blocked' | 'refunded' | null;
   items: {
     listingId: string | null;
     title: string;
@@ -303,12 +308,23 @@ export type Order = {
   };
 };
 
-export type PaymentMethod = 'OM_GN' | 'MTN_GN' | 'CINETPAY';
+export type PaymentMethod = 'OM_GN' | 'MTN_GN' | 'CHAPCHAPPAY';
+
+export type PaymentConfig = {
+  provider: 'chapchappay';
+  minPaymentGnf: number;
+  /** Le client paie sur la page sécurisée du prestataire (lien de paiement E-Commerce). */
+  hostedPage: boolean;
+  methods: PaymentMethod[];
+};
 
 export type Payment = {
   id: string;
   merchantTransactionId: string;
-  status: 'pending' | 'success' | 'failed' | 'expired';
+  status: 'pending' | 'success' | 'failed' | 'expired' | 'canceled' | 'partially_refunded' | 'refunded';
+  /** null : paiement antérieur à Chap Chap Pay. */
+  provider?: 'chapchappay' | null;
+  orderNumber?: string | null;
   kind: string;
   paymentMethod: PaymentMethod;
   amountGnf: number;

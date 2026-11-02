@@ -47,6 +47,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
   {
     title: 'Finances & partenaires',
     rows: [
+      { icon: 'swap-horizontal-outline', title: 'Reversements', href: '/admin/reversements' },
       { icon: 'wallet-outline', title: 'Porte-monnaies', href: '/admin/porte-monnaies' },
       { icon: 'briefcase-outline', title: 'Enseignes', href: '/admin/partenaires' },
       { icon: 'settings-outline', title: 'Paramètres', href: '/admin/parametres' },

@@ -214,7 +214,7 @@ export function DisputeChat({ id }: { id: string }) {
             </Txt>
             <Txt variant="caption">{d.reason}</Txt>
             <Txt variant="small" style={{ marginTop: 2 }}>
-              Les fonds restent bloqués en séquestre jusqu’à la décision.
+              Le montant reste conservé par FripCash jusqu’à la décision.
             </Txt>
           </View>
         </View>
@@ -289,7 +289,7 @@ export function DisputeChat({ id }: { id: string }) {
       <View style={styles.action}>
         <Txt variant="h3">Régler le litige</Txt>
         <Txt variant="caption">
-          {formatGnf(net)} sont bloqués en séquestre.{' '}
+          {formatGnf(net)} sont conservés par FripCash.{' '}
           {role === 'buyer'
             ? 'Si le souci est réglé, tu peux payer le vendeur.'
             : role === 'seller'
@@ -425,7 +425,7 @@ export function DisputeChat({ id }: { id: string }) {
           visible={confirm === 'release'}
           onClose={() => setConfirm(null)}
           title="Payer le vendeur ?"
-          message={`Les ${formatGnf(net)} bloqués en séquestre seront versés à ${d.sellerName}. Le litige sera clos.`}
+          message={`Les ${formatGnf(net)} conservés par FripCash seront versés à ${d.sellerName}. Le litige sera clos.`}
           confirmLabel="Oui, payer"
           icon="cash-outline"
           loading={busy}
@@ -435,7 +435,7 @@ export function DisputeChat({ id }: { id: string }) {
           visible={confirm === 'refund'}
           onClose={() => setConfirm(null)}
           title="Rembourser l’acheteur ?"
-          message={`Les ${formatGnf(net)} bloqués en séquestre seront renvoyés à ${d.buyerName}. Le litige sera clos.`}
+          message={`Les ${formatGnf(net)} conservés par FripCash seront renvoyés à ${d.buyerName}. Le litige sera clos.`}
           confirmLabel="Oui, rembourser"
           tone="danger"
           icon="return-down-back-outline"
@@ -445,7 +445,7 @@ export function DisputeChat({ id }: { id: string }) {
 
         <Sheet visible={splitOpen} onClose={() => setSplitOpen(false)} title="Partager le montant" icon="git-compare-outline">
           <View style={{ gap: 14 }}>
-            <Txt variant="caption">Choisis la part de chacun sur les {formatGnf(net)} en séquestre.</Txt>
+            <Txt variant="caption">Choisis la part de chacun sur les {formatGnf(net)} conservés par FripCash.</Txt>
             <View style={styles.splitRow}>
               <View style={styles.splitSide}>
                 <Txt variant="small">Acheteur</Txt>

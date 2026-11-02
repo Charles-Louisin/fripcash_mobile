@@ -1,6 +1,6 @@
 import type { ComponentProps, ComponentType, ReactNode } from 'react';
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { InteractionManager, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { colors, radius } from '@/theme';
@@ -89,8 +89,8 @@ export function LazyMount({
 }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => setReady(true));
-    return () => handle.cancel();
+    const handle = requestIdleCallback(() => setReady(true));
+    return () => cancelIdleCallback(handle);
   }, []);
   if (!ready) return <>{fallback ?? <PageSkeleton kind={kind} />}</>;
   return (

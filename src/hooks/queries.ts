@@ -18,6 +18,7 @@ import {
   fetchNotifications,
   fetchOpenMissions,
   fetchOrder,
+  fetchPaymentConfig,
   fetchPublicSeller,
   fetchPurchases,
   fetchSales,
@@ -96,6 +97,10 @@ export function useZones() {
 
 export function useTariffs() {
   return useQuery({ queryKey: qk.tariffs, queryFn: fetchTariffs, staleTime: 10 * 60_000 });
+}
+
+export function usePaymentConfig() {
+  return useQuery({ queryKey: ['payments', 'config'], queryFn: fetchPaymentConfig, staleTime: 10 * 60_000 });
 }
 
 export function useListings(params?: ListingQuery, enabled = true) {

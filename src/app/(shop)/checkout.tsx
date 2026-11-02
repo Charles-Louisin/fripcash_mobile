@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -19,7 +20,7 @@ import {
   toast,
   Txt,
 } from '@/components/ui';
-import { useAuth, useMe, useTariffs, useZones } from '@/hooks/queries';
+import { useAuth, useMe, usePaymentConfig, useTariffs, useZones } from '@/hooks/queries';
 import { bundleDiscountGnf, cartSellerGroups, lineTotalGnf, useCart } from '@/hooks/use-cart';
 import { checkout, errorMessage, type PaymentMethod } from '@/lib/api';
 import { PAYMENT_METHOD_LABELS } from '@/lib/domain';
@@ -38,11 +39,14 @@ type FieldErrors = {
   payment?: string;
 };
 
+// Chap Chap Pay : le paiement se fait sur sa page sécurisée ; on y présélectionne l'opérateur.
 const METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
-  { id: 'OM_GN', label: 'Orange Money', hint: 'Paiement sur ton 62…' },
-  { id: 'MTN_GN', label: 'MTN MoMo', hint: 'Paiement sur ton 65…' },
-  { id: 'CINETPAY', label: 'CinetPay', hint: 'Carte ou autre Mobile Money' },
+  { id: 'OM_GN', label: 'Orange Money', hint: 'Sur ton 62… · page sécurisée Chap Chap Pay' },
+  { id: 'MTN_GN', label: 'MTN MoMo', hint: 'Sur ton 65… · page sécurisée Chap Chap Pay' },
+  { id: 'CHAPCHAPPAY', label: 'Autre moyen', hint: 'PayCard, carte Visa / Mastercard, Kulu…' },
 ];
+
+const isMobileMoney = (m: PaymentMethod) => m === 'OM_GN' || m === 'MTN_GN';
 
 function personName(value?: string | null) {
   const v = value?.trim() ?? '';
@@ -56,6 +60,7 @@ export default function CheckoutScreen() {
   const cart = useCart();
   const client = useQueryClient();
   const tariffs = useTariffs();
+  const paymentConfig = usePaymentConfig();
   const [zoneId, setZoneId] = useState(me?.shippingZoneId ?? '');
   const [name, setName] = useState(personName(me?.displayName));
   const [phone, setPhone] = useState(me?.phone ?? '');
@@ -129,10 +134,12 @@ export default function CheckoutScreen() {
     if (!phone.trim()) next.phone = 'Indique un numéro de téléphone.';
     else if (!e164) next.phone = 'Ce numéro n’est pas valide. Utilise un numéro guinéen, par exemple 622 00 00 00.';
     if (email.trim() && !isValidEmail(email)) next.email = 'Cet e-mail n’est pas valide. Exemple : nom@mail.com.';
-    const payPhone = method === 'CINETPAY' ? e164 : parseGnMobile(mobile || phone)?.e164;
-    if (method !== 'CINETPAY' && !payPhone) {
+    const payPhone = isMobileMoney(method) ? parseGnMobile(mobile || phone)?.e164 : e164;
+    if (isMobileMoney(method) && !payPhone) {
       next.mobile = `Le numéro ${PAYMENT_METHOD_LABELS[method]} doit commencer par ${method === 'OM_GN' ? '62' : '65'}.`;
     }
+    const minimum = paymentConfig.data?.minPaymentGnf ?? 0;
+    if (minimum && total < minimum) next.payment = `Le paiement minimum est de ${formatGnf(minimum)}.`;
     const messages = Object.values(next).filter(Boolean) as string[];
     if (messages.length) {
       setErrors(next);
@@ -141,8 +148,11 @@ export default function CheckoutScreen() {
     }
     setErrors({});
     setLoading(true);
+    // Deep link de retour : le serveur y ajoute la référence du paiement (…/paiement/<ref>).
+    const appReturnUrl = Linking.createURL('paiement');
     try {
       const res = await checkout({
+        appReturnUrl,
         paymentMethod: method,
         address: codePickup ? address.trim() || 'Retrait sur place' : address.trim(),
         city: codePickup ? undefined : zoneName || undefined,
@@ -160,7 +170,9 @@ export default function CheckoutScreen() {
         client.invalidateQueries({ queryKey: [key] });
       }
       if (res.payment.mustRedirect && res.payment.paymentUrl) {
-        await WebBrowser.openBrowserAsync(res.payment.paymentUrl);
+        // Page hébergée Chap Chap Pay ; elle se referme d'elle-même au retour vers l'app.
+        // Le résultat du navigateur ne vaut pas preuve : l'écran suivant vérifie auprès du serveur.
+        await WebBrowser.openAuthSessionAsync(res.payment.paymentUrl, appReturnUrl);
       }
       router.replace({ pathname: '/paiement/[ref]', params: { ref: res.payment.merchantTransactionId } });
     } catch (e) {
@@ -359,7 +371,7 @@ export default function CheckoutScreen() {
           </Pressable>
         ))}
       </View>
-      {method !== 'CINETPAY' ? (
+      {isMobileMoney(method) ? (
         <Input
           label={`Numéro ${PAYMENT_METHOD_LABELS[method]}`}
           value={mobile}
@@ -375,9 +387,10 @@ export default function CheckoutScreen() {
       ) : null}
 
       <Card style={{ marginTop: 16, backgroundColor: colors.secondary }}>
-        <Txt variant="bodyStrong">Paiement sécurisé (séquestre)</Txt>
+        <Txt variant="bodyStrong">Paiement protégé</Txt>
         <Txt variant="caption">
-          Ton paiement est bloqué jusqu’à ce que tu confirmes la réception. Le vendeur n’est payé qu’après.
+          Tu paies une seule fois sur la page sécurisée Chap Chap Pay. Chaque vendeur n’est payé qu’après ta
+          confirmation de réception de son colis.
         </Txt>
       </Card>
 

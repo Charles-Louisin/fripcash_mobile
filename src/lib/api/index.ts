@@ -6,3 +6,4 @@ export * from './commerce';
 export * from './account';
 export * from './media';
 export * from './admin';
+export * from './finance';

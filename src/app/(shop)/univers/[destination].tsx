@@ -219,7 +219,7 @@ export default function UniversScreen() {
           columnWrapperStyle={isGrid ? styles.gridRow : undefined}
           contentContainerStyle={[isGrid ? styles.contentGrid : styles.contentList, !shown.length && { flexGrow: 1 }]}
           ListEmptyComponent={
-            shops.isLoading ? null : <EmptyState icon={universe.icon} title="Aucune boutique" />
+            shops.isLoading ? undefined : <EmptyState icon={universe.icon} title="Aucune boutique" />
           }
           renderItem={({ item }) => (
             <View style={isGrid ? undefined : styles.listItem}>
