@@ -21,21 +21,32 @@ import {
   Input,
   LazyMount,
   PageSkeleton,
+  Segmented,
   Sheet,
   toast,
   Txt,
 } from '@/components/ui';
 import { CourierIntro } from '@/components/commerce/courier-intro';
-import { qk, useAuth, useDisputes, useMe, useMessages, useOrder } from '@/hooks/queries';
+import {
+  qk,
+  useAuth,
+  useConversations,
+  useDisputes,
+  useMarkOrderRead,
+  useMarkThreadRead,
+  useMe,
+  useMessages,
+  useOrder,
+} from '@/hooks/queries';
 import {
   acceptOrderOffer,
   cancelAfterRefuse,
   confirmReception,
   createConversation,
   errorMessage,
-  fetchConversations,
   openDispute,
   payFullAfterRefuse,
+  recallCourier,
   refuseOrderOffer,
   requestCourier,
   reviewOrder,
@@ -44,6 +55,7 @@ import {
   transitionOrder,
   verifyOrderPickupCode,
   type Order,
+  type OrderConversationPair,
   type OrderStatus,
 } from '@/lib/api';
 import { FULFILLMENT_LABELS, ORDER_STATUS_LABELS, orderStatusTone, shopKindLabel } from '@/lib/domain';
@@ -67,53 +79,101 @@ type FeedItem =
   | { kind: 'event'; id: string; at: string; status: string; note?: string; order: Order }
   | { kind: 'action'; id: string; at: string; order: Order };
 
-function eventCopy(status: string, order: Order) {
+type ViewerRole = 'buyer' | 'seller';
+
+/** Une étape peut se lire différemment selon qu'on est l'acheteur ou le vendeur du colis. */
+function eventCopy(status: string, order: Order, role: ViewerRole) {
   const name = order.courierName || 'le livreur';
+  const buyer = role === 'buyer';
+  const ready =
+    order.fulfillmentMode === 'pickup'
+      ? buyer
+        ? { title: 'Prête au retrait', text: 'Présente ton code au vendeur pour récupérer la commande.' }
+        : { title: 'Prête pour le retrait', text: 'Remets le colis quand l’acheteur te présente son code.' }
+      : buyer
+        ? { title: 'Prête à récupérer', text: 'Un livreur peut prendre en charge le colis.' }
+        : { title: 'Colis prêt', text: 'Notifie un livreur pour qu’il vienne récupérer le colis.' };
   switch (status) {
     case 'PAID':
-      return { title: 'Payé — paiement protégé', text: 'FripCash conserve le montant jusqu’à ta confirmation de réception.' };
+      return buyer
+        ? { title: 'Payé — paiement protégé', text: 'FripCash conserve le montant jusqu’à ta confirmation de réception.' }
+        : { title: 'Commande payée', text: 'Le client a payé. Le montant reste bloqué jusqu’à sa confirmation de réception.' };
     case 'SELLER_NOTIFIED':
-      return { title: 'Vendeur notifié', text: 'La boutique a été informée de ta commande.' };
+      return buyer
+        ? { title: 'Vendeur notifié', text: 'La boutique a été informée de ta commande.' }
+        : { title: 'Nouvelle commande', text: 'Le client a payé : prépare sa commande.' };
     case 'PREPARING':
-      return { title: 'En préparation', text: 'Le vendeur prépare le colis.' };
+      return buyer
+        ? { title: 'En préparation', text: 'Le vendeur prépare ton colis.' }
+        : { title: 'Colis en préparation', text: 'Prépare la commande, puis notifie un livreur.' };
     case 'READY_FOR_PICKUP':
-      return order.fulfillmentMode === 'pickup'
-        ? { title: 'Prête au retrait', text: 'Présente ton code au vendeur pour récupérer la commande.' }
-        : { title: 'Prête à récupérer', text: 'Un livreur peut prendre en charge le colis.' };
+      return ready;
     case 'COURIER_ASSIGNED':
-      return { title: `Course acceptée — ${name}`, text: `${name} va récupérer le colis.` };
+      return buyer
+        ? { title: `Course acceptée — ${name}`, text: `${name} va récupérer le colis puis t’apporter.` }
+        : { title: `Livreur assigné — ${name}`, text: `${name} passe récupérer le colis chez toi.` };
     case 'BUYER_CONFIRMED':
-      return { title: 'Colis reçu', text: 'Le client a confirmé la réception du colis.' };
+      return buyer
+        ? { title: 'Colis reçu', text: 'Tu as confirmé la réception : le vendeur peut être payé.' }
+        : { title: 'Le client a reçu le colis', text: 'Il a appuyé sur « Colis reçu » : le paiement part vers toi.' };
     case 'COLLECTED':
-      return { title: `Colis récupéré par ${name}`, text: `En route vers toi.` };
+      return buyer
+        ? { title: `Colis récupéré par ${name}`, text: `${name} est en route vers toi.` }
+        : { title: 'Colis récupéré', text: `${name} a quitté ta boutique avec le colis.` };
     case 'IN_TRANSIT':
-      return { title: `En route vers toi`, text: `${name} apporte le colis.` };
+      return buyer
+        ? { title: 'En route vers toi', text: `${name} apporte le colis.` }
+        : { title: 'En livraison', text: `${name} livre le colis chez le client.` };
     case 'DELIVERED':
-      return { title: 'Colis remis — à toi de vérifier', text: 'Ouvre le colis et vérifie l’article avant de confirmer.' };
+      return buyer
+        ? { title: 'Colis remis — à toi de vérifier', text: 'Ouvre le colis et vérifie l’article avant de confirmer.' }
+        : { title: 'Colis remis au client', text: 'Le client doit appuyer sur « Colis reçu » pour que tu sois payé.' };
     case 'FUNDS_RELEASED':
-      return { title: 'Fonds libérés', text: 'Le paiement a été versé au vendeur.' };
+      return buyer
+        ? { title: 'Fonds libérés', text: 'Le paiement a été versé au vendeur.' }
+        : { title: 'Paiement reçu', text: 'Le montant de la commande t’a été versé.' };
     case 'DISPUTED':
-      return { title: 'Litige ouvert', text: order.disputeReason || 'Un problème a été signalé.' };
+      return {
+        title: 'Litige ouvert',
+        text: order.disputeReason || (buyer ? 'Tu as signalé un problème sur cette commande.' : 'Le client a signalé un problème.'),
+      };
     case 'REFUNDED':
-      return { title: 'Remboursée', text: 'Le montant a été renvoyé.' };
+      return buyer
+        ? { title: 'Remboursée', text: 'Le montant a été renvoyé sur ton moyen de paiement.' }
+        : { title: 'Remboursement effectué', text: 'Le montant a été renvoyé à l’acheteur.' };
     case 'OFFER_ACCEPTED':
-      return { title: 'Offre acceptée', text: order.offerAmountGnf ? `Nouveau montant : ${order.offerAmountGnf} GNF` : '' };
+      return {
+        title: buyer ? 'Offre acceptée' : 'Tu as accepté l’offre',
+        text: order.offerAmountGnf ? `Nouveau montant : ${formatGnf(order.offerAmountGnf)}` : '',
+      };
     case 'OFFER_REFUSED':
-      return { title: 'Offre refusée', text: 'Le vendeur a refusé l’offre.' };
+      return buyer
+        ? { title: 'Offre refusée', text: 'Le vendeur a refusé ton offre.' }
+        : { title: 'Offre refusée', text: 'Le client peut payer le prix plein ou annuler.' };
     default:
       return { title: ORDER_STATUS_LABELS[status as OrderStatus] || status, text: '' };
   }
 }
 
+/** Étapes qui ont du sens dans la discussion avec le livreur. */
+const COURIER_STAGES = new Set(['READY_FOR_PICKUP', 'COURIER_ASSIGNED', 'COLLECTED', 'IN_TRANSIT', 'DELIVERED', 'BUYER_CONFIRMED']);
+/** Statuts où l'acheteur et le livreur peuvent déjà échanger (colis collecté). */
+const BUYER_COURIER_CHAT = new Set(['COLLECTED', 'IN_TRANSIT', 'DELIVERED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING', 'DISPUTED']);
+
+type ChatTab = 'client' | 'courier';
+
 export default function OrderChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: initialTab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { user } = useAuth();
   const { data: me } = useMe();
   const client = useQueryClient();
   const orderQ = useOrder(id, 6_000);
   const order = orderQ.data;
-  const [convId, setConvId] = useState<string | null>(null);
-  const messages = useMessages(convId ?? undefined, 5_000);
+  const [tab, setTab] = useState<ChatTab>(initialTab === 'courier' ? 'courier' : 'client');
+  const [created, setCreated] = useState<Record<string, string>>({});
+  const [chatError, setChatError] = useState<Record<string, string>>({});
+  const triedRef = useRef<Record<string, boolean>>({});
+  const convos = useConversations(8_000);
   const listRef = useRef<FlatList>(null);
   const composerSpace = useComposerSpace();
   const [text, setText] = useState('');
@@ -131,33 +191,56 @@ export default function OrderChatScreen() {
   const myId = me?.id || user?.id;
   const isBuyer = !!order && order.buyerId === myId;
   const isSeller = !!order && order.sellerId === myId;
+  const role: ViewerRole = isSeller ? 'seller' : 'buyer';
+  /** Deux discussions seulement pour la livraison FripCash : le client d’un côté, le livreur de l’autre. */
+  const tabbed = !!order && order.fulfillmentMode === 'courier';
+  const pair: OrderConversationPair = tab === 'courier' && tabbed ? (isSeller ? 'seller_courier' : 'buyer_courier') : 'buyer_seller';
+
+  const courierHint = !tabbed || tab !== 'courier' || !order
+    ? null
+    : isSeller
+      ? order.courierId
+        ? null
+        : 'Aucun livreur n’a encore accepté cette course. Notifie un livreur pour ouvrir la discussion.'
+      : BUYER_COURIER_CHAT.has(order.status)
+        ? null
+        : 'La discussion avec le livreur s’ouvre une fois le colis récupéré.';
+
+  const known = (convos.data ?? []).find((c) => c.orderId === id && (c.pair === pair || (!c.pair && pair === 'buyer_seller')));
+  const convId = known?.id ?? created[pair] ?? null;
+  const messages = useMessages(convId ?? undefined, 5_000);
 
   useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
+    triedRef.current = {};
+    setCreated({});
+    setChatError({});
+  }, [id]);
+
+  // La discussion d'une paire n'existe qu'une fois les deux rôles réunis : on la crée à l'ouverture de l'onglet.
+  useEffect(() => {
+    if (!order || convId || courierHint || triedRef.current[pair]) return;
+    triedRef.current[pair] = true;
     (async () => {
       try {
-        const existing = await fetchConversations();
-        const found = existing.find((c) => c.orderId === id);
-        if (found) {
-          if (!cancelled) setConvId(found.id);
-          return;
-        }
-        const created = await createConversation({ orderId: id });
-        if (!cancelled) setConvId(created.id);
-      } catch {
-        /* conversation optionnelle */
+        const c = await createConversation(pair === 'buyer_seller' ? { orderId: id } : { orderId: id, with: 'courier' });
+        setCreated((prev) => ({ ...prev, [pair]: c.id }));
+        client.invalidateQueries({ queryKey: qk.conversations });
+      } catch (e) {
+        setChatError((prev) => ({ ...prev, [pair]: errorMessage(e) }));
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  }, [id, order, pair, convId, courierHint, client]);
+
+  // Ouvrir une discussion la marque comme lue, côté fil de discussion et côté notifications.
+  useMarkThreadRead(convId, messages.data?.length ?? 0);
+  useMarkOrderRead(id, order?.updatedAt);
 
   const feed = useMemo<FeedItem[]>(() => {
     if (!order) return [];
     const items: FeedItem[] = [];
+    const courierTab = tab === 'courier' && tabbed;
     for (const t of order.timeline ?? []) {
+      if (courierTab && !COURIER_STAGES.has(t.status)) continue;
       items.push({ kind: 'event', id: `ev-${t.status}-${t.at}`, at: t.at, status: t.status, note: t.note, order });
     }
     for (const m of messages.data ?? []) {
@@ -179,7 +262,7 @@ export default function OrderChatScreen() {
     const lastAt = items.reduce((max, i) => (i.at > max ? i.at : max), order.createdAt);
     items.push({ kind: 'action', id: 'actions', at: lastAt, order });
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  }, [order, messages.data, myId]);
+  }, [order, messages.data, myId, tab, tabbed]);
 
   const invalidate = () => {
     client.invalidateQueries({ queryKey: qk.order(id) });
@@ -232,6 +315,9 @@ export default function OrderChatScreen() {
 
   const first = order.items[0];
   const peer = isBuyer ? order.seller : order.buyer;
+  const onCourierTab = tab === 'courier' && tabbed;
+  const chatHint = onCourierTab ? courierHint ?? chatError[pair] : null;
+  const peerName = onCourierTab ? order.courierName || 'Livreur' : peer?.pseudo || 'Commande';
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -239,17 +325,35 @@ export default function OrderChatScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <IconButton icon="chevron-back" label="Retour" background={colors.white} onPress={() => router.back()} />
-          <Avatar name={peer?.pseudo} size={40} />
+          <Avatar name={peerName} size={40} />
           <View style={{ flex: 1 }}>
             <Txt variant="title" numberOfLines={1}>
-              {peer?.pseudo || 'Commande'}
+              {peerName}
             </Txt>
             <Txt variant="caption" numberOfLines={1}>
-              {isBuyer ? shopKindLabel(order.seller?.sellerKind, order.seller?.shopKind) : 'Acheteur'} ·{' '}
+              {onCourierTab
+                ? FULFILLMENT_LABELS[order.fulfillmentMode]
+                : isBuyer
+                  ? shopKindLabel(order.seller?.sellerKind, order.seller?.shopKind)
+                  : 'Acheteur'}
+              {' · '}
               {ORDER_STATUS_LABELS[order.status]}
             </Txt>
           </View>
         </View>
+
+        {tabbed ? (
+          <View style={styles.tabs}>
+            <Segmented
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'client', label: isBuyer ? 'Vendeur' : 'Acheteur' },
+                { value: 'courier', label: 'Livreur' },
+              ]}
+            />
+          </View>
+        ) : null}
 
         <Pressable
           style={styles.pin}
@@ -271,9 +375,19 @@ export default function OrderChatScreen() {
           {first?.listingId ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
         </Pressable>
 
+        {chatHint ? (
+          <View style={styles.notice}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
+            <Txt variant="caption" style={{ flex: 1 }}>
+              {chatHint}
+            </Txt>
+          </View>
+        ) : null}
+
         <FlatList
           ref={listRef}
           data={feed}
+          key={pair}
           keyExtractor={(i) => i.id}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
@@ -304,7 +418,7 @@ export default function OrderChatScreen() {
               );
             }
             if (item.kind === 'event') {
-              const copy = eventCopy(item.status, item.order);
+              const copy = eventCopy(item.status, item.order, role);
               const icon =
                 item.status === 'COLLECTED' || item.status === 'IN_TRANSIT'
                   ? 'bicycle-outline'
@@ -328,11 +442,13 @@ export default function OrderChatScreen() {
                 isBuyer={isBuyer}
                 isSeller={isSeller}
                 busy={busy}
+                scope={onCourierTab ? 'courier' : 'client'}
                 onConfirm={() => setConfirmOpen(true)}
                 onDispute={() => setDisputeOpen(true)}
                 onReview={() => setReviewOpen(true)}
                 onPrepare={() => run(() => transitionOrder(order.id, 'PREPARING'), 'Commande en préparation')}
-                onRequestCourier={() => run(() => requestCourier(order.id), 'Livreur demandé')}
+                onRequestCourier={() => run(() => requestCourier(order.id), 'Livreur de ta zone notifié')}
+                onRecallCourier={() => run(() => recallCourier(order.id), 'Course reproposée aux livreurs de la zone')}
                 onAcceptOffer={() => run(() => acceptOrderOffer(order.id), 'Offre acceptée')}
                 onRefuseOffer={() => run(() => refuseOrderOffer(order.id), 'Offre refusée')}
                 onPayFull={() => run(() => payFullAfterRefuse(order.id), 'Paiement du prix plein')}
@@ -354,7 +470,7 @@ export default function OrderChatScreen() {
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder="Écrire un message…"
+            placeholder={onCourierTab ? 'Écrire au livreur…' : 'Écrire un message…'}
             placeholderTextColor={colors.textSubtle}
             style={styles.input}
             multiline
@@ -408,7 +524,13 @@ export default function OrderChatScreen() {
             setBusy(false);
           }
         }}>
-        <Input value={disputeReason} onChangeText={setDisputeReason} placeholder="Ex. article endommagé" multiline />
+        <Input
+          value={disputeReason}
+          onChangeText={setDisputeReason}
+          placeholder="Ex. article endommagé"
+          multiline
+          style={{ minHeight: 96, textAlignVertical: 'top' }}
+        />
       </ConfirmDialog>
 
       <Sheet visible={reviewOpen} onClose={() => setReviewOpen(false)} title="Laisser un avis">
@@ -448,11 +570,13 @@ function ActionCards({
   isBuyer,
   isSeller,
   busy,
+  scope,
   onConfirm,
   onDispute,
   onReview,
   onPrepare,
   onRequestCourier,
+  onRecallCourier,
   onAcceptOffer,
   onRefuseOffer,
   onPayFull,
@@ -468,11 +592,14 @@ function ActionCards({
   isBuyer: boolean;
   isSeller: boolean;
   busy: boolean;
+  /** Onglet de discussion affiché : les cartes liées au livreur ne sortent que dans celui du livreur. */
+  scope: ChatTab;
   onConfirm: () => void;
   onDispute: () => void;
   onReview: () => void;
   onPrepare: () => void;
   onRequestCourier: () => void;
+  onRecallCourier: () => void;
   onAcceptOffer: () => void;
   onRefuseOffer: () => void;
   onPayFull: () => void;
@@ -482,7 +609,89 @@ function ActionCards({
 }) {
   const cards: React.ReactNode[] = [];
   const isPickup = order.fulfillmentMode === 'pickup';
+  const withCourier = order.fulfillmentMode === 'courier';
+  const courierScope = withCourier && scope === 'courier';
   const [sellerCode, setSellerCode] = useState('');
+
+  const recvCard = (key: string) => {
+    const arrived = order.status === 'DELIVERED';
+    return (
+      <View key={key} style={styles.action}>
+        <Txt variant="h3">{arrived ? 'Colis remis — à toi de vérifier' : 'Ton colis arrive'}</Txt>
+        <Txt variant="caption">
+          À la remise, ouvre le colis et vérifie l’article, puis appuie sur « Colis reçu ». Le livreur attend cette confirmation
+          pour te laisser le colis. Le vendeur est alors payé : l’action est définitive et tu ne pourras plus ouvrir de
+          litige. En cas de souci, signale-le avant de confirmer.
+        </Txt>
+        <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
+        <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
+      </View>
+    );
+  };
+
+  const awaitingCourier =
+    withCourier && !order.courierId && ['PAID', 'SELLER_NOTIFIED', 'PREPARING', 'READY_FOR_PICKUP'].includes(order.status);
+  const courierAssigned = withCourier && order.status === 'COURIER_ASSIGNED' && !!order.courierId;
+
+  /** Cartes « livraison » du vendeur : notifier les livreurs de la zone, ou rappeler celui qui a accepté. */
+  const sellerCourierCards = (prefix: string) => {
+    const out: React.ReactNode[] = [];
+    if (!isSeller) return out;
+    if (awaitingCourier) {
+      const notified = order.status === 'READY_FOR_PICKUP';
+      out.push(
+        <View key={`${prefix}-notify`} style={styles.action}>
+          <Txt variant="h3">{notified ? 'En attente d’un livreur' : 'Pas encore de livreur'}</Txt>
+          <Txt variant="caption">
+            {notified
+              ? 'Les livreurs de la zone ont été notifiés. Le premier qui accepte la course rejoint l’onglet « Livreur ».'
+              : 'Quand le colis est prêt, notifie les livreurs de la zone de collecte. Le premier qui accepte prend la course.'}
+          </Txt>
+          <Button
+            title={notified ? 'Notifier à nouveau' : 'Notifier le livreur'}
+            icon="megaphone-outline"
+            variant={notified ? 'outline' : 'primary'}
+            onPress={onRequestCourier}
+            loading={busy}
+            full
+          />
+          {['PAID', 'SELLER_NOTIFIED', 'PREPARING'].includes(order.status) ? (
+            <Button title="Rembourser l’acheteur" variant="danger" onPress={onRefund} disabled={busy} full />
+          ) : null}
+        </View>
+      );
+    }
+    if (courierAssigned) {
+      out.push(
+        <View key={`${prefix}-recall`} style={styles.action}>
+          <Txt variant="h3">{`Livreur : ${order.courierName || '—'}`}</Txt>
+          <Txt variant="caption">
+            Tant qu’il n’a pas récupéré le colis, tu peux annuler sa course et la reproposer aux livreurs de la zone.
+          </Txt>
+          <Button title="Rappeler un livreur" variant="outline" icon="refresh-outline" onPress={onRecallCourier} loading={busy} full />
+        </View>
+      );
+    }
+    return out;
+  };
+
+  /** Onglet « Livreur » : uniquement ce qui concerne la course, côté vendeur comme côté client. */
+  if (courierScope) {
+    const awaitingHandover = !order.buyerConfirmedAt && HANDOVER_STATUSES.includes(order.status);
+    cards.push(...sellerCourierCards('courier'));
+    if (isSeller && awaitingHandover) {
+      cards.push(
+        <View key="handover" style={[styles.action, { backgroundColor: colors.warningSoft }]}>
+          <Txt variant="h3">Avant de laisser le colis</Txt>
+          <Txt variant="caption">
+            Assure-toi toujours que le client a bien appuyé sur « Colis reçu » dans son application avant de lui laisser le colis.
+          </Txt>
+        </View>
+      );
+    }
+    if (isBuyer && awaitingHandover && order.status !== 'COURIER_ASSIGNED') cards.push(recvCard('recv-courier'));
+    return <>{cards}</>;
+  }
 
   if (dispute) {
     const live = dispute.status === 'open' || dispute.status === 'under_review';
@@ -524,9 +733,14 @@ function ActionCards({
       <View key="prep" style={styles.action}>
         <Txt variant="h3">Préparer la commande</Txt>
         <Button title="Marquer en préparation" onPress={onPrepare} loading={busy} full />
+        {!isPickup ? (
+          <Button title="Rembourser l’acheteur" variant="danger" onPress={onRefund} disabled={busy} full />
+        ) : null}
       </View>
     );
   }
+  // Après la préparation, le vendeur notifie le livreur depuis la discussion principale aussi.
+  if (order.status !== 'PAID' && order.status !== 'SELLER_NOTIFIED') cards.push(...sellerCourierCards('client'));
   if (isPickup && isBuyer && order.pickupCode && order.escrowStatus === 'blocked') {
     cards.push(
       <View key="pickup-buyer" style={[styles.action, { backgroundColor: '#E4F3EC' }]}>
@@ -570,20 +784,8 @@ function ActionCards({
       </View>
     );
   }
-  if (isSeller && !isPickup && (order.status === 'PREPARING' || order.status === 'PAID' || order.status === 'SELLER_NOTIFIED')) {
-    cards.push(
-      <View key="courier" style={styles.action}>
-        <Txt variant="h3">Demander un livreur</Txt>
-        <Txt variant="caption">{FULFILLMENT_LABELS[order.fulfillmentMode]}</Txt>
-        <Button title="Demander un livreur FripCash" onPress={onRequestCourier} loading={busy} full />
-        {['PAID', 'SELLER_NOTIFIED', 'PREPARING'].includes(order.status) ? (
-          <Button title="Rembourser l’acheteur" variant="danger" onPress={onRefund} disabled={busy} full />
-        ) : null}
-      </View>
-    );
-  }
   const awaitingHandover = !order.buyerConfirmedAt && HANDOVER_STATUSES.includes(order.status);
-  if (isSeller && awaitingHandover) {
+  if (isSeller && awaitingHandover && !withCourier) {
     cards.push(
       <View key="handover" style={[styles.action, { backgroundColor: colors.warningSoft }]}>
         <Txt variant="h3">Avant de laisser le colis</Txt>
@@ -593,21 +795,7 @@ function ActionCards({
       </View>
     );
   }
-  if (isBuyer && awaitingHandover && order.status !== 'COURIER_ASSIGNED' && !isPickup) {
-    const arrived = order.status === 'DELIVERED';
-    cards.push(
-      <View key="recv" style={styles.action}>
-        <Txt variant="h3">{arrived ? 'Colis remis — à toi de vérifier' : 'Ton colis arrive'}</Txt>
-        <Txt variant="caption">
-          À la remise, ouvre le colis et vérifie l’article, puis appuie sur « Colis reçu ». Le livreur attend cette confirmation
-          pour te laisser le colis. Le vendeur est alors payé : l’action est définitive et tu ne pourras plus ouvrir de
-          litige. En cas de souci, signale-le avant de confirmer.
-        </Txt>
-        <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
-        <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
-      </View>
-    );
-  }
+  if (isBuyer && awaitingHandover && order.status !== 'COURIER_ASSIGNED' && !isPickup) cards.push(recvCard('recv'));
   if (isPickup && isBuyer && order.status === 'DELIVERED' && !order.buyerConfirmedAt) {
     cards.push(
       <View key="recv-pickup" style={styles.action}>
@@ -618,18 +806,6 @@ function ActionCards({
         <Button title="Colis reçu" icon="cube-outline" onPress={onConfirm} loading={busy} full />
         <Button title="Un problème ? Signaler" variant="ghost" onPress={onDispute} disabled={busy} full />
       </View>
-    );
-  } else if (
-    isBuyer &&
-    !order.buyerConfirmedAt &&
-    !['REFUNDED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING', 'DISPUTED'].includes(order.status)
-  ) {
-    cards.push(
-      <Pressable key="signal" onPress={onDispute} style={{ alignSelf: 'center', padding: 8 }}>
-        <Txt variant="label" color={colors.primary}>
-          Un problème ? Signaler
-        </Txt>
-      </Pressable>
     );
   }
   if (isBuyer && ['DELIVERED', 'FUNDS_RELEASED', 'FEEDBACK_PENDING'].includes(order.status)) {
@@ -654,6 +830,16 @@ function ActionCards({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  tabs: { paddingHorizontal: 16, paddingBottom: 8 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
+  },
   pin: {
     flexDirection: 'row',
     gap: 10,

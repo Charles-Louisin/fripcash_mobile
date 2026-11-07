@@ -77,8 +77,9 @@ export function notificationHref(
   const conversationId = typeof data.conversationId === 'string' ? data.conversationId : null;
 
   if (audience === 'COURIER') {
-    if (orderId) return { pathname: '/livreur/mission/[id]', params: { id: orderId } };
+    // Un message ouvre sa discussion ; le reste ouvre la course.
     if (conversationId) return { pathname: '/livreur/messages/[id]', params: { id: conversationId } };
+    if (orderId) return { pathname: '/livreur/mission/[id]', params: { id: orderId } };
     return null;
   }
   if (isAdmin) {
@@ -88,7 +89,11 @@ export function notificationHref(
     return '/admin';
   }
   if (disputeId) return { pathname: '/litiges/[id]', params: { id: disputeId } };
-  if (orderId) return { pathname: '/commandes/[id]', params: { id: orderId } };
+  if (orderId) {
+    // Message du livreur : la commande s'ouvre directement sur l'onglet « Livreur ».
+    const courierThread = data.pair === 'seller_courier' || data.pair === 'buyer_courier';
+    return { pathname: '/commandes/[id]', params: courierThread ? { id: orderId, tab: 'courier' } : { id: orderId } };
+  }
   if (conversationId) return { pathname: '/messages/[id]', params: { id: conversationId } };
   if (typeof data.listingId === 'string' && data.stock) {
     return { pathname: '/vendeur/article/[id]', params: { id: data.listingId } };

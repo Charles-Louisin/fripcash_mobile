@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import {
   addFavorite,
@@ -27,6 +28,8 @@ import {
   fetchWalletBalance,
   fetchWalletLedger,
   fetchZones,
+  markConversationRead,
+  markOrderNotificationsRead,
   removeFavorite,
   toggleSellerLike,
   type ListingQuery,
@@ -198,6 +201,36 @@ export function useMessages(id?: string, refetchInterval?: number) {
     enabled: !!id && isAuthed,
     refetchInterval,
   });
+}
+
+/** Ouvrir une discussion la marque comme lue : le compteur de messages et les notifications liées. */
+export function useMarkThreadRead(conversationId?: string | null, messageCount = 0) {
+  const { isAuthed } = useAuth();
+  const client = useQueryClient();
+  useEffect(() => {
+    if (!conversationId || !isAuthed) return;
+    void markConversationRead(conversationId)
+      .then((r) => {
+        if (!r.read) return;
+        client.invalidateQueries({ queryKey: qk.conversations });
+        client.invalidateQueries({ queryKey: qk.notifications });
+      })
+      .catch(() => {});
+  }, [conversationId, messageCount, isAuthed, client]);
+}
+
+/** Ouvrir une commande marque ses notifications de suivi comme lues. */
+export function useMarkOrderRead(orderId?: string | null, version?: string) {
+  const { isAuthed } = useAuth();
+  const client = useQueryClient();
+  useEffect(() => {
+    if (!orderId || !isAuthed) return;
+    void markOrderNotificationsRead(orderId)
+      .then((r) => {
+        if (r.read) client.invalidateQueries({ queryKey: qk.notifications });
+      })
+      .catch(() => {});
+  }, [orderId, version, isAuthed, client]);
 }
 
 export function useOffers() {

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { IconButton, Logo, Txt } from '@/components/ui';
@@ -32,7 +32,7 @@ export function AppHeader() {
       ) : null}
       <IconButton icon="notifications-outline" label="Notifications" badge={unread > 0} onPress={guard('/notifications')} />
       <IconButton icon="heart-outline" label="Favoris" badge={favorites || undefined} onPress={guard('/favoris')} />
-      <IconButton icon="bag-outline" label="Panier" badge={count || undefined} onPress={() => router.push('/panier')} />
+      <IconButton icon="bag-outline" label="Panier" badge={count || undefined} onPress={() => router.push((isConsumer ? '/mon-panier' : '/panier') as Href)} />
       {isConsumer ? (
         <IconButton icon="settings-outline" label="Paramètres" onPress={() => router.push('/reglages')} />
       ) : (

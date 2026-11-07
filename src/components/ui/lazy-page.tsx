@@ -1,7 +1,7 @@
 import type { ComponentProps, ComponentType, ReactNode } from 'react';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { colors, radius } from '@/theme';
 
@@ -93,11 +93,21 @@ export function LazyMount({
     return () => cancelIdleCallback(handle);
   }, []);
   if (!ready) return <>{fallback ?? <PageSkeleton kind={kind} />}</>;
-  return (
-    <Animated.View entering={FadeIn.duration(240)} style={{ flex: 1 }}>
-      {children}
-    </Animated.View>
-  );
+  return <FadeInView>{children}</FadeInView>;
+}
+
+/**
+ * Apparition en fondu par simple opacité. Pas d'animation de layout (`entering`) : sur Android
+ * (nouvelle architecture), elle positionnait le contenu depuis une mesure prise trop tôt et le
+ * dessinait par-dessus l'en-tête de la page (Explorer, Messages).
+ */
+function FadeInView({ children }: { children: ReactNode }) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.set(withTiming(1, { duration: 240 }));
+  }, [opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }));
+  return <Animated.View style={[{ flex: 1 }, style]}>{children}</Animated.View>;
 }
 
 export function lazyPage<T extends ComponentType<any>>(

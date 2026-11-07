@@ -316,6 +316,8 @@ export type PaymentConfig = {
   /** Le client paie sur la page sécurisée du prestataire (lien de paiement E-Commerce). */
   hostedPage: boolean;
   methods: PaymentMethod[];
+  /** Frais Chap Chap Pay ajoutés au total (le serveur recalcule et fait foi). */
+  fees?: { passedToBuyer: boolean; mobileMoneyRate: number; otherRate: number; fixedGnf: number };
 };
 
 export type Payment = {
@@ -328,6 +330,8 @@ export type Payment = {
   kind: string;
   paymentMethod: PaymentMethod;
   amountGnf: number;
+  /** Frais Chap Chap Pay inclus dans amountGnf. */
+  paymentFeeGnf?: number;
   message: string;
   paymentUrl: string;
   mustRedirect?: boolean;
@@ -346,13 +350,22 @@ export type Offer = {
   createdAt: string;
 };
 
+/** Discussion de commande : toujours entre deux rôles précis. */
+export type OrderConversationPair = 'buyer_seller' | 'seller_courier' | 'buyer_courier';
+export type OrderRole = 'buyer' | 'seller' | 'courier';
+
 export type Conversation = {
   id: string;
   listingId: string | null;
   orderId: string | null;
+  pair: OrderConversationPair | null;
+  myRole: OrderRole | null;
+  peerRoleLabel: string | null;
   participantIds: string[];
   lastMessage?: string;
   lastMessageAt?: string;
+  unread?: number;
+  order?: { title: string; imageUrl?: string; status: OrderStatus } | null;
   peer: { id: string; name: string } | null;
 };
 

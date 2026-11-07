@@ -37,43 +37,52 @@ export function Sheet({
   const drag = useSharedValue(0);
   const backdrop = useSharedValue(0);
 
+  // Monter dès l'ouverture, pendant le rendu (pas de setState synchrone dans un effet).
+  if (visible && !mounted) setMounted(true);
+
   useEffect(() => {
     if (visible) {
       opened.current = true;
-      setMounted(true);
-      drag.value = 0;
-      translateY.value = 560;
-      translateY.value = withSpring(0, SPRING);
-      backdrop.value = withTiming(1, { duration: 340 });
+      // .set()/.get() plutôt que .value : requis avec le React Compiler (sinon mises à jour perdues).
+      drag.set(0);
+      translateY.set(560);
+      translateY.set(withSpring(0, SPRING));
+      backdrop.set(withTiming(1, { duration: 340 }));
       return;
     }
     if (!opened.current) return;
-    translateY.value = translateY.value + drag.value;
-    drag.value = 0;
-    backdrop.value = withTiming(0, { duration: 260 });
-    translateY.value = withTiming(560, { duration: 300 }, (finished) => {
-      if (finished) runOnJS(setMounted)(false);
-    });
+    translateY.set(translateY.get() + drag.get());
+    drag.set(0);
+    backdrop.set(withTiming(0, { duration: 260 }));
+    translateY.set(
+      withTiming(560, { duration: 300 }, (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      })
+    );
+    // Filet de sécurité : si l'animation est interrompue (Android), le modal invisible
+    // resterait monté au-dessus de l'écran et bloquerait tous les appuis.
+    const fallback = setTimeout(() => setMounted(false), 400);
+    return () => clearTimeout(fallback);
   }, [backdrop, drag, translateY, visible]);
 
   const pan = Gesture.Pan()
     .activeOffsetY(6)
     .onUpdate((e) => {
-      drag.value = Math.max(0, e.translationY);
+      drag.set(Math.max(0, e.translationY));
     })
     .onEnd((e) => {
       if (e.translationY > 72 || e.velocityY > 850) {
         runOnJS(onClose)();
         return;
       }
-      drag.value = withSpring(0, SPRING);
+      drag.set(withSpring(0, SPRING));
     });
 
   const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value + drag.value }],
+    transform: [{ translateY: translateY.get() + drag.get() }],
   }));
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdrop.value * interpolate(drag.value, [0, 320], [1, 0], Extrapolation.CLAMP),
+    opacity: backdrop.get() * interpolate(drag.get(), [0, 320], [1, 0], Extrapolation.CLAMP),
   }));
 
   if (!mounted && !visible) return null;
@@ -165,7 +174,7 @@ export function ConfirmDialog({
               {message}
             </Txt>
           ) : null}
-          {children}
+          {children ? <View style={{ alignSelf: 'stretch' }}>{children}</View> : null}
           <View style={{ gap: 10, alignSelf: 'stretch', marginTop: 6 }}>
             <Button
               title={confirmLabel}

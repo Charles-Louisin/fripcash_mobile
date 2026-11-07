@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState, ScreenHeader, toast, Txt } from '@/components/ui';
 import { CourierIntro } from '@/components/commerce/courier-intro';
-import { useAuth, useConversations, useMessages } from '@/hooks/queries';
+import { useAuth, useConversations, useMarkThreadRead, useMessages } from '@/hooks/queries';
 import { errorMessage, sendMessage } from '@/lib/api';
 import { useComposerSpace } from '@/lib/keyboard-space';
 import { formatTime } from '@/lib/format';
@@ -17,6 +17,7 @@ export default function LivreurConversationScreen() {
   const { user } = useAuth();
   const convos = useConversations();
   const messages = useMessages(id, 5_000);
+  useMarkThreadRead(id, messages.data?.length ?? 0);
   const peer = (convos.data ?? []).find((c) => c.id === id)?.peer;
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);

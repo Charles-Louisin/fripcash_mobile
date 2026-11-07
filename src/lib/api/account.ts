@@ -9,6 +9,7 @@ import type {
   Message,
   NotificationPreference,
   Order,
+  OrderConversationPair,
   SellerVerification,
 } from './types';
 
@@ -82,14 +83,17 @@ export const createConversation = (body: {
   participantIds?: string[];
   listingId?: string;
   orderId?: string;
-  with?: 'buyer' | 'seller';
-}) =>
-  api.post<{ id: string; participantIds: string[] }>('/conversations', body);
+  with?: 'buyer' | 'seller' | 'courier';
+}) => api.post<{ id: string; pair?: OrderConversationPair; participantIds: string[] }>('/conversations', body);
 export const fetchMessages = (id: string) => api.get<Message[]>(`/conversations/${id}/messages`);
 export const sendMessage = (id: string, body: string) => api.post<Message>(`/conversations/${id}/messages`, { body });
+export const markConversationRead = (id: string) => api.post<{ read: number }>(`/conversations/${id}/read`);
 
 export const fetchNotifications = () => api.get<AppNotification[]>('/notifications');
 export const markNotificationRead = (id: string) => api.patch(`/notifications/${id}/read`);
+/** Notifications de suivi d'une commande (hors messages, gérés par discussion). */
+export const markOrderNotificationsRead = (orderId: string) =>
+  api.post<{ read: number }>(`/notifications/read-order/${orderId}`);
 export const registerDevice = (token: string, platform: string, audience: string) =>
   api.post('/notifications/devices', { token, platform, audience });
 export const fetchNotificationPreferences = () => api.get<NotificationPreference[]>('/notifications/preferences');

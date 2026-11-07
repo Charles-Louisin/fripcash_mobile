@@ -9,7 +9,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { isDashboardPath, useDashboardMenu } from '@/components/dashboard/dashboard-menu-context';
@@ -75,10 +74,11 @@ export function Screen({
 
   return (
     <SafeAreaView edges={edges} style={[styles.root, { backgroundColor: background }]}>
-      <Animated.View entering={FadeIn.duration(220)} style={{ flex: 1, paddingBottom: keyboardSpace }}>
+      {/* Pas d'animation de layout ici (décalage du contenu sur Android) : LazyMount fait déjà le fondu. */}
+      <View style={{ flex: 1, paddingBottom: keyboardSpace }}>
         {content}
         {footer}
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }

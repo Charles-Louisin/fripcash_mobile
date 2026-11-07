@@ -27,6 +27,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/domain';
 import { formatGnf } from '@/lib/format';
 import { isValidEmail, parseGnMobile, toE164 } from '@/lib/gn-phone';
 import { tariffAmountGnf } from '@/lib/shipping';
+import { paymentFeeGnf } from '@/lib/payment-fees';
 import { colors, radius } from '@/theme';
 
 type FieldErrors = {
@@ -108,6 +109,9 @@ export default function CheckoutScreen() {
   const bundleDiscount = withOffer ? 0 : bundleDiscountGnf(cart.lines);
   const goods = withOffer ? offerAmount : cart.subtotal - bundleDiscount;
   const total = goods + shipping;
+  // Frais Chap Chap Pay du moyen choisi, ajoutés au total payé (le serveur recalcule et fait foi).
+  const fee = paymentFeeGnf(total, method, paymentConfig.data?.fees);
+  const toPay = total + fee;
   const onVacation = cart.lines.find((l) => l.sellerOnVacation);
 
   const pay = async () => {
@@ -218,7 +222,7 @@ export default function CheckoutScreen() {
               </Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Txt variant="h2" weight="bold">
-                  {formatGnf(total)}
+                  {formatGnf(toPay)}
                 </Txt>
                 <Ionicons name="chevron-up" size={18} color={colors.textMuted} />
               </View>
@@ -386,6 +390,18 @@ export default function CheckoutScreen() {
         />
       ) : null}
 
+      {fee > 0 ? (
+        <View style={[styles.line, styles.feeBox]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Txt variant="bodyStrong">Frais de paiement</Txt>
+            <Txt variant="caption">
+              Frais Chap Chap Pay du moyen choisi, ajoutés au total. Commande {formatGnf(total)} + frais.
+            </Txt>
+          </View>
+          <Txt variant="bodyStrong">{formatGnf(fee)}</Txt>
+        </View>
+      ) : null}
+
       <Card style={{ marginTop: 16, backgroundColor: colors.secondary }}>
         <Txt variant="bodyStrong">Paiement protégé</Txt>
         <Txt variant="caption">
@@ -456,10 +472,18 @@ export default function CheckoutScreen() {
               </Txt>
             </View>
           ))}
+          {fee > 0 ? (
+            <View style={styles.line}>
+              <Txt variant="caption" style={{ flex: 1, paddingRight: 12 }}>
+                Frais de paiement · Chap Chap Pay
+              </Txt>
+              <Txt variant="bodyStrong">{formatGnf(fee)}</Txt>
+            </View>
+          ) : null}
           <View style={styles.line}>
-            <Txt variant="bodyStrong">Total</Txt>
+            <Txt variant="bodyStrong">Total à payer</Txt>
             <Txt variant="h3" weight="bold">
-              {formatGnf(total)}
+              {formatGnf(toPay)}
             </Txt>
           </View>
           <Button title="Payer" size="lg" onPress={pay} loading={loading} full />
@@ -473,6 +497,7 @@ const styles = StyleSheet.create({
   payBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   payTotal: { flex: 1, gap: 2, paddingVertical: 4 },
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  feeBox: { marginTop: 4, padding: 14, borderRadius: radius.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderSoft },
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   item: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   thumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },

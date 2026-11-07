@@ -56,6 +56,8 @@ export const confirmReception = (id: string) => api.post<Order>(`/orders/${id}/c
 export const verifyOrderPickupCode = (id: string, code: string) =>
   api.post<Order>(`/orders/${id}/pickup-code/verify`, { code });
 export const requestCourier = (id: string) => api.post<Order>(`/orders/${id}/request-courier`);
+/** Annule l'acceptation du livreur tant que le colis n'est pas collecté et reproposée la course. */
+export const recallCourier = (id: string) => api.post<Order>(`/orders/${id}/recall-courier`);
 export const openDispute = (id: string, reason: string) =>
   api.post<{ id: string; status: string; reason: string }>(`/orders/${id}/disputes`, { reason });
 export const reviewOrder = (id: string, body: { rating: number; comment?: string; listingId: string }) =>
