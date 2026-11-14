@@ -63,6 +63,7 @@ import { formatGnf, formatTime, shortOrderId } from '@/lib/format';
 import { useComposerSpace } from '@/lib/keyboard-space';
 import { colors, fonts, radius } from '@/theme';
 import { useQueryClient } from '@tanstack/react-query';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 type FeedItem =
   | { kind: 'msg'; id: string; at: string; mine: boolean; body: string }
@@ -468,6 +469,7 @@ export default function OrderChatScreen() {
 
         <View style={[styles.composer, { paddingBottom: composerSpace }]}>
           <TextInput
+            maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
             value={text}
             onChangeText={setText}
             placeholder={onCourierTab ? 'Écrire au livreur…' : 'Écrire un message…'}

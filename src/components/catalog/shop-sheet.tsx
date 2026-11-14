@@ -342,7 +342,9 @@ export function ShopSheet({ shop }: { shop: PublicShop }) {
               <ShopMark
                 value={shop.avatarUrl}
                 name={shop.shopName}
-                size={Math.max(80, dressingInfoH)}
+                // Bornée : sans plafond, l'avatar qui grandit resserre le texte voisin, qui s'allonge
+                // et le refait grandir (boucle visible dès qu'une photo de profil est définie).
+                size={Math.min(104, Math.max(80, dressingInfoH))}
               />
               <View
                 style={{ flex: 1, gap: 4 }}

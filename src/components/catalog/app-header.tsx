@@ -6,6 +6,7 @@ import { IconButton, Logo, Txt } from '@/components/ui';
 import { useAuth, useFavoriteIds, useUnreadCount } from '@/hooks/queries';
 import { useCart } from '@/hooks/use-cart';
 import { colors, fonts, radius } from '@/theme';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 export function AppHeader() {
   const { isConsumer, isAdmin, isCourier } = useAuth();
@@ -80,6 +81,7 @@ export function SearchBar({
         </Txt>
       ) : (
         <TextInput
+          maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
           value={value}
           onChangeText={onChangeText}
           onSubmitEditing={onSubmit}

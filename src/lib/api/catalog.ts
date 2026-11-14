@@ -12,6 +12,9 @@ export const fetchPublicStats = () =>
 
 export type ShopKindFilter = 'particulier' | 'standard' | 'proximite' | 'enseigne';
 
+/** Nombre de boutiques par univers (une seule petite requête au lieu de 4 listes complètes). */
+export const fetchShopCounts = () => api.get<Record<ShopKindFilter, number>>('/catalog/shops/counts');
+
 export function fetchShops(params?: {
   shopKind?: ShopKindFilter;
   q?: string;

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, TextInput, View, type TextInputProps, type Style
 import { colors, fonts, radius } from '@/theme';
 
 import { Txt } from './text';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 type Props = TextInputProps & {
   label?: string;
@@ -35,6 +36,7 @@ export function Input({ label, hint, error, icon, prefix, secureTextEntry, multi
         {icon ? <Ionicons name={icon} size={18} color={colors.textMuted} /> : null}
         {prefix ? <Txt variant="bodyStrong" color={colors.textMuted}>{prefix}</Txt> : null}
         <TextInput
+          maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
           placeholderTextColor={colors.textSubtle}
           {...rest}
           multiline={multiline}

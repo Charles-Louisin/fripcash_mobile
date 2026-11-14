@@ -13,6 +13,7 @@ import { ACTIVE_COURIER_STATUSES, courierStatusLabel, DONE_STATUSES, orderStatus
 import { formatGnf, formatRelative, shortOrderId } from '@/lib/format';
 import { colors, fonts, radius } from '@/theme';
 import { useQueryClient } from '@tanstack/react-query';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 type Filter = 'all' | 'active' | 'done';
 
@@ -121,6 +122,7 @@ export default function MissionsScreen() {
         <View style={styles.search}>
           <Ionicons name="search-outline" size={18} color={colors.onDarkMuted} />
           <TextInput
+            maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
             value={q}
             onChangeText={setQ}
             placeholder="Rechercher une mission"

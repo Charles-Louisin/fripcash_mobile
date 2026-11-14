@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Txt } from '@/components/ui';
 import { colors, fonts, radius } from '@/theme';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -138,6 +139,7 @@ export function SideDrawer({
               }}>
               <Ionicons name="search-outline" size={16} color={colors.textMuted} />
               <TextInput
+                maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Rechercher dans le menu"

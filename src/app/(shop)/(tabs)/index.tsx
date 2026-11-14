@@ -11,7 +11,7 @@ import { isPromo, PromoCarousel } from '@/components/catalog/promo-carousel';
 import { ShopCard } from '@/components/catalog/shop-card';
 import { cardWidthFor, variantForShop } from '@/components/catalog/shop-slider';
 import { EmptyState, ErrorState, LazyMount, SectionHeader, Skeleton, Txt } from '@/components/ui';
-import { useListings, useShops } from '@/hooks/queries';
+import { useListings, useShopCounts, useShops } from '@/hooks/queries';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { UNIVERSES } from '@/lib/domain';
 import { formatNumber } from '@/lib/format';
@@ -24,23 +24,18 @@ const NEWS_GAP = 10;
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const pull = usePullRefresh();
-  const listings = useListings({ limit: 40 });
+  const listings = useListings({ limit: 24 });
   const shops = useShops({ limit: 12 });
-  const particuliers = useShops({ shopKind: 'particulier', limit: 80 });
-  const standards = useShops({ shopKind: 'standard', limit: 80 });
-  const proximite = useShops({ shopKind: 'proximite', limit: 80 });
-  const enseignes = useShops({ shopKind: 'enseigne', limit: 80 });
+  const shopCounts = useShopCounts();
+  const UNIVERSE_KIND = {
+    SECONDE_MAIN: 'particulier',
+    ARTICLES_NEUFS: 'standard',
+    QUARTIER_BOUTIQUES: 'proximite',
+    ENSEIGNES: 'enseigne',
+  } as const;
   const universeCount = (destination: string) => {
-    const query =
-      destination === 'SECONDE_MAIN'
-        ? particuliers
-        : destination === 'ARTICLES_NEUFS'
-          ? standards
-          : destination === 'QUARTIER_BOUTIQUES'
-            ? proximite
-            : enseignes;
-    const n = query.data?.length ?? 0;
-    if (query.isLoading && query.data == null) return '…';
+    if (shopCounts.data == null) return shopCounts.isLoading ? '…' : '';
+    const n = shopCounts.data[UNIVERSE_KIND[destination as keyof typeof UNIVERSE_KIND] ?? 'enseigne'] ?? 0;
     return `${formatNumber(n)} boutique${n > 1 ? 's' : ''}`;
   };
   const all = listings.data ?? [];
@@ -88,8 +83,9 @@ export default function HomeScreen() {
                       <View style={styles.uniArrow}>
                         <Ionicons name="chevron-forward" size={16} color={colors.text} />
                       </View>
-                      <View style={{ gap: 1, paddingRight: 28 }}>
-                        <Txt style={styles.uniTitle} numberOfLines={1}>
+                      <View style={{ gap: 1 }}>
+                        {/* La flèche est au-dessus : toute la largeur sert au texte, qui se réduit plutôt que d'être tronqué. */}
+                        <Txt style={styles.uniTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                           {u.title}
                         </Txt>
                         <Txt style={styles.uniSub} numberOfLines={1}>

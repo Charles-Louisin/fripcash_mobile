@@ -116,7 +116,7 @@ function kindLabel(sellerKind?: string | null, shopKind?: string | null) {
 
 export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listingQ = useListing(id);
   const listing = listingQ.data;
@@ -249,7 +249,8 @@ export default function ArticleScreen() {
   const shipping = tariffAmountGnf(tariffs.data ?? [], listing.zoneId, zoneId);
   const incl = listing.priceGnf + shipping;
   const activeImage = images[photo] || images[0];
-  const heroH = Math.round(Math.min(width * 1.15, 520));
+  // Bornée aussi par la hauteur : sur un petit écran, la photo ne doit pas repousser prix et achat hors de vue.
+  const heroH = Math.round(Math.min(width * 1.15, height * 0.46, 520));
   const description = listing.description?.trim() ?? '';
   const descLong = description.length > 110;
   const related = (similar.data ?? []).filter((item) => item.id !== listing.id).slice(0, 6);

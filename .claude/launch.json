@@ -4,12 +4,18 @@
     {
       "name": "fripcash-web-local-api",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8099"],
+      "runtimeArgs": [
+        "expo",
+        "start",
+        "--web",
+        "--port",
+        "8099"
+      ],
       "env": {
         "EXPO_PUBLIC_API_URL": "http://127.0.0.1:5055/api/v1",
         "BROWSER": "none",
-        "CI": "1",
-        "NODE_OPTIONS": "--max-old-space-size=6144"
+        "NODE_OPTIONS": "--max-old-space-size=6144",
+        "EXPO_WEB_SPA": "1"
       },
       "port": 8099
     }

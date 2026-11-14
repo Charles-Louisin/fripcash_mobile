@@ -38,6 +38,7 @@ import {
 import { formatGnf, formatTime, shortOrderId } from '@/lib/format';
 import { useComposerSpace } from '@/lib/keyboard-space';
 import { colors, fonts, radius } from '@/theme';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 type Attachment = { url: string; storageKey?: string; mimeType?: string; name?: string };
 
@@ -402,6 +403,7 @@ export function DisputeChat({ id }: { id: string }) {
                   )}
                 </Pressable>
                 <TextInput
+                  maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
                   value={text}
                   onChangeText={setText}
                   placeholder="Écrire un message…"

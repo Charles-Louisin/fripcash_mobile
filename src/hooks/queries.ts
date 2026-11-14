@@ -23,6 +23,7 @@ import {
   fetchPublicSeller,
   fetchPurchases,
   fetchSales,
+  fetchShopCounts,
   fetchShops,
   fetchTariffs,
   fetchWalletBalance,
@@ -127,6 +128,10 @@ export function useShops(
   enabled = true,
 ) {
   return useQuery({ queryKey: qk.shops(params), queryFn: () => fetchShops(params), enabled });
+}
+
+export function useShopCounts() {
+  return useQuery({ queryKey: ['shops', 'counts'], queryFn: fetchShopCounts, staleTime: 5 * 60_000 });
 }
 
 export function useSeller(id?: string) {

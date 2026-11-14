@@ -11,6 +11,7 @@ import { errorMessage, sendMessage } from '@/lib/api';
 import { useComposerSpace } from '@/lib/keyboard-space';
 import { formatTime } from '@/lib/format';
 import { colors, fonts, radius } from '@/theme';
+import { MAX_FONT_MULTIPLIER } from "@/theme/responsive";
 
 export default function LivreurConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,6 +76,7 @@ export default function LivreurConversationScreen() {
         />
         <View style={[styles.composer, { paddingBottom: composerSpace }]}>
           <TextInput
+            maxFontSizeMultiplier={MAX_FONT_MULTIPLIER}
             value={text}
             onChangeText={setText}
             placeholder="Écrire un message…"

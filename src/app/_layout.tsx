@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { NotificationsBootstrap, PushRegistrar } from '@/components/push-registrar';
 import { toast, ToastHost } from '@/components/ui';
+import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { ApiError, setUnauthorizedHandler } from '@/lib/api';
 import { goHomeAfterLogout, openDashboard } from '@/lib/nav';
 import { needsAccountVerification, useSession } from '@/stores/session';
@@ -119,6 +120,8 @@ export default function RootLayout() {
           <PushRegistrar audience={audience ?? 'CONSUMER'} />
         ) : null}
         <ToastHost />
+        {/* Au-dessus de tout : relève le splash natif puis dévoile l'accueil. */}
+        <AnimatedSplash ready={hydrated} />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
